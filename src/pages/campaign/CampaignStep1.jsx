@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ChevronLeft, Check, Palette, Globe } from 'lucide-react';
+import { ChevronLeft, Check, Palette } from 'lucide-react';
 import ProcessLayout from '../../components/process/ProcessLayout';
 import { FormInput, FormSelect } from '../../components/ui';
 import brandfetchService from '../../supabase/api/brandFetchService';
@@ -238,7 +238,6 @@ const CampaignStep1 = () => {
             onChange={handleChange}
             required
             disabled={isLoading}
-            icon={<Globe />}
             error={formData.website && !isValidURL(formData.website) ? 'Please enter a valid URL' : ''}
             helper="We'll use this to fetch your brand colors and logo"
           />
