@@ -6,6 +6,7 @@ import {
   FileText,
   Users,
   Activity,
+  CreditCard,
   LogOut
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -65,6 +66,11 @@ const AdminLayout = () => {
       path: '/admin/users',
       icon: Users,
       label: 'Users'
+    },
+    {
+      path: '/admin/transactions',
+      icon: CreditCard,
+      label: 'Transactions'
     },
     {
       path: '/admin/activity',

@@ -629,11 +629,437 @@ export const adminUserActions = {
   deleteUser
 };
 
+// ============================================================================
+// ADMIN TRANSACTION MONITORING SERVICE
+// ============================================================================
+export const adminTransactionService = {
+  /**
+   * Get transactions with filters and pagination
+   * @param {Object} filters - Filter options
+   * @returns {Promise<Object>} Transactions with metadata
+   */
+  async getTransactions(filters = {}) {
+    try {
+      const {
+        status,
+        userId,
+        campaignId,
+        dateFrom,
+        dateTo,
+        isTestMode,
+        limit = 50,
+        offset = 0,
+        sortBy = 'created_at',
+        sortOrder = 'desc'
+      } = filters;
+
+      // Build query (without profile relationship - we'll join manually)
+      let query = supabase
+        .from('transactions')
+        .select(`
+          *,
+          campaigns!left(campaign_name, approval_status)
+        `, { count: 'exact' });
+
+      // Apply filters
+      if (status) {
+        query = query.eq('status', status);
+      }
+
+      if (userId) {
+        query = query.eq('user_id', userId);
+      }
+
+      if (campaignId) {
+        query = query.eq('campaign_id', campaignId);
+      }
+
+      if (dateFrom) {
+        query = query.gte('created_at', dateFrom);
+      }
+
+      if (dateTo) {
+        query = query.lte('created_at', dateTo);
+      }
+
+      if (isTestMode !== undefined) {
+        query = query.eq('is_test_mode', isTestMode);
+      }
+
+      // Apply sorting
+      query = query.order(sortBy, { ascending: sortOrder === 'asc' });
+
+      // Apply pagination
+      query = query.range(offset, offset + limit - 1);
+
+      const { data: transactions, error, count } = await query;
+
+      if (error) throw error;
+
+      // Manually join profile data
+      if (transactions && transactions.length > 0) {
+        // Get unique user IDs
+        const userIds = [...new Set(transactions.map(t => t.user_id))];
+
+        // Fetch profiles for those users
+        const { data: profiles } = await supabase
+          .from('profile')
+          .select('user_id, email, full_name')
+          .in('user_id', userIds);
+
+        // Merge profile data into transactions
+        const transactionsWithProfiles = transactions.map(t => ({
+          ...t,
+          profile: profiles?.find(p => p.user_id === t.user_id) || { email: 'Unknown', full_name: 'Unknown' }
+        }));
+
+        return {
+          success: true,
+          transactions: transactionsWithProfiles,
+          total: count || 0,
+          limit,
+          offset
+        };
+      }
+
+      return {
+        success: true,
+        transactions: [],
+        total: count || 0,
+        limit,
+        offset
+      };
+
+    } catch (error) {
+      console.error('[Admin Transactions] Error fetching transactions:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get single transaction by ID
+   * @param {string} transactionId - Transaction ID
+   * @returns {Promise<Object>} Transaction details
+   */
+  async getTransactionById(transactionId) {
+    try {
+      const { data: transaction, error } = await supabase
+        .from('transactions')
+        .select(`
+          *,
+          campaigns!left(campaign_name, approval_status, user_id)
+        `)
+        .eq('id', transactionId)
+        .single();
+
+      if (error) throw error;
+
+      // Manually join profile data
+      if (transaction) {
+        const { data: profile } = await supabase
+          .from('profile')
+          .select('user_id, email, full_name, phone')
+          .eq('user_id', transaction.user_id)
+          .single();
+
+        return {
+          success: true,
+          transaction: {
+            ...transaction,
+            profile: profile || { email: 'Unknown', full_name: 'Unknown', phone: null }
+          }
+        };
+      }
+
+      return {
+        success: true,
+        transaction: null
+      };
+
+    } catch (error) {
+      console.error('[Admin Transactions] Error fetching transaction:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get revenue statistics
+   * @param {Object} filters - Date range and test mode filters
+   * @returns {Promise<Object>} Revenue stats
+   */
+  async getRevenueStats(filters = {}) {
+    try {
+      const {
+        dateFrom,
+        dateTo,
+        isTestMode,
+      } = filters;
+
+      // Build query for succeeded transactions
+      let query = supabase
+        .from('transactions')
+        .select('amount_dollars, created_at, billing_reason')
+        .eq('status', 'succeeded');
+
+      if (dateFrom) {
+        query = query.gte('created_at', dateFrom);
+      }
+
+      if (dateTo) {
+        query = query.lte('created_at', dateTo);
+      }
+
+      if (isTestMode !== undefined) {
+        query = query.eq('is_test_mode', isTestMode);
+      }
+
+      const { data: succeededTransactions, error: succeededError } = await query;
+
+      if (succeededError) throw succeededError;
+
+      // Get failed transactions count
+      let failedQuery = supabase
+        .from('transactions')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'failed');
+
+      if (isTestMode !== undefined) {
+        failedQuery = failedQuery.eq('is_test_mode', isTestMode);
+      }
+
+      const { count: failedCount, error: failedError } = await failedQuery;
+
+      if (failedError) throw failedError;
+
+      // Calculate stats
+      const totalRevenue = succeededTransactions.reduce((sum, tx) => sum + parseFloat(tx.amount_dollars), 0);
+      const transactionCount = succeededTransactions.length;
+      const averageTransactionAmount = transactionCount > 0 ? totalRevenue / transactionCount : 0;
+
+      // Group by billing reason
+      const byBillingReason = succeededTransactions.reduce((acc, tx) => {
+        const reason = tx.billing_reason || 'unknown';
+        if (!acc[reason]) {
+          acc[reason] = { count: 0, revenue: 0 };
+        }
+        acc[reason].count++;
+        acc[reason].revenue += parseFloat(tx.amount_dollars);
+        return acc;
+      }, {});
+
+      // Revenue by day
+      const revenueByDay = succeededTransactions.reduce((acc, tx) => {
+        const date = new Date(tx.created_at).toISOString().split('T')[0];
+        if (!acc[date]) {
+          acc[date] = 0;
+        }
+        acc[date] += parseFloat(tx.amount_dollars);
+        return acc;
+      }, {});
+
+      return {
+        success: true,
+        stats: {
+          totalRevenue: totalRevenue.toFixed(2),
+          transactionCount,
+          failedTransactionCount: failedCount || 0,
+          averageTransactionAmount: averageTransactionAmount.toFixed(2),
+          successRate: transactionCount > 0 ?
+            ((transactionCount / (transactionCount + (failedCount || 0))) * 100).toFixed(2) :
+            0,
+          byBillingReason,
+          revenueByDay,
+        }
+      };
+
+    } catch (error) {
+      console.error('[Admin Transactions] Error fetching revenue stats:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Retry failed payment for a campaign
+   * @param {string} campaignId - Campaign ID
+   * @returns {Promise<Object>} Retry result
+   */
+  async retryFailedPayment(campaignId) {
+    try {
+      // Get campaign details
+      const { data: campaign, error: campaignError } = await supabase
+        .from('campaigns')
+        .select('*')
+        .eq('id', campaignId)
+        .single();
+
+      if (campaignError || !campaign) {
+        throw new Error('Campaign not found');
+      }
+
+      // Import campaign service
+      const { default: campaignService } = await import('./campaignService.js');
+
+      // Get current admin user
+      const { data: { user } } = await supabase.auth.getUser();
+
+      // Retry charge
+      const result = await campaignService.chargeCampaignOnApproval(campaignId, user.id);
+
+      return result;
+
+    } catch (error) {
+      console.error('[Admin Transactions] Error retrying payment:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Refund a transaction
+   * @param {string} transactionId - Transaction ID
+   * @param {string} reason - Refund reason
+   * @returns {Promise<Object>} Refund result
+   */
+  async refundTransaction(transactionId, reason) {
+    try {
+      // Get transaction details
+      const { data: transaction, error: txError } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('id', transactionId)
+        .single();
+
+      if (txError || !transaction) {
+        throw new Error('Transaction not found');
+      }
+
+      if (transaction.status !== 'succeeded') {
+        throw new Error('Can only refund succeeded transactions');
+      }
+
+      if (transaction.status === 'refunded' || transaction.status === 'partially_refunded') {
+        throw new Error('Transaction already refunded');
+      }
+
+      // Create refund via Stripe (through Edge Function or direct API)
+      // For now, we'll create a simple implementation
+      // In production, you'd want a dedicated Edge Function for refunds
+
+      const stripe = await import('https://esm.sh/stripe@11.1.0?target=deno');
+      const stripeClient = new stripe.default(Deno.env.get('STRIPE_SECRET_KEY'), {
+        apiVersion: '2024-11-20.acacia',
+      });
+
+      const refund = await stripeClient.refunds.create({
+        payment_intent: transaction.stripe_payment_intent_id,
+        reason: 'requested_by_customer',
+        metadata: {
+          refund_reason: reason,
+          refunded_by: 'admin',
+        },
+      });
+
+      // Update transaction record
+      const { error: updateError } = await supabase
+        .from('transactions')
+        .update({
+          status: 'refunded',
+          refunded_at: new Date().toISOString(),
+          refund_reason: reason,
+          refund_amount_cents: refund.amount,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', transactionId);
+
+      if (updateError) throw updateError;
+
+      // Update campaign if applicable
+      if (transaction.campaign_id) {
+        await supabase
+          .from('campaigns')
+          .update({
+            payment_status: 'refunded',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', transaction.campaign_id);
+      }
+
+      return {
+        success: true,
+        message: 'Transaction refunded successfully',
+        refundId: refund.id,
+      };
+
+    } catch (error) {
+      console.error('[Admin Transactions] Error refunding transaction:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Export transactions to CSV
+   * @param {Object} filters - Same filters as getTransactions
+   * @returns {Promise<string>} CSV string
+   */
+  async exportTransactionsCSV(filters = {}) {
+    try {
+      // Get all transactions without pagination
+      const { transactions } = await this.getTransactions({
+        ...filters,
+        limit: 10000, // Max export limit
+        offset: 0,
+      });
+
+      // Generate CSV
+      const headers = [
+        'Date',
+        'Transaction ID',
+        'Campaign',
+        'User Email',
+        'Amount',
+        'Status',
+        'Billing Reason',
+        'Payment Method',
+        'Test Mode',
+      ];
+
+      const rows = transactions.map(tx => [
+        new Date(tx.created_at).toISOString(),
+        tx.stripe_payment_intent_id,
+        tx.campaigns?.campaign_name || 'N/A',
+        tx.profile?.email || 'N/A',
+        `$${tx.amount_dollars}`,
+        tx.status,
+        tx.billing_reason,
+        tx.payment_method_brand && tx.payment_method_last4 ?
+          `${tx.payment_method_brand} •••• ${tx.payment_method_last4}` :
+          'N/A',
+        tx.is_test_mode ? 'Yes' : 'No',
+      ]);
+
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+      ].join('\n');
+
+      return {
+        success: true,
+        csv: csvContent,
+        filename: `transactions_${new Date().toISOString().split('T')[0]}.csv`,
+      };
+
+    } catch (error) {
+      console.error('[Admin Transactions] Error exporting CSV:', error);
+      throw error;
+    }
+  },
+};
+
 export default {
   campaigns: adminCampaignService,
   users: adminUserService,
   stats: adminStatsService,
   campaignActions: adminCampaignActions,
   userActions: adminUserActions,
-  activity: adminActivityService
+  activity: adminActivityService,
+  transactions: adminTransactionService
 };

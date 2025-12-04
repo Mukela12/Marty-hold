@@ -8,6 +8,7 @@ import EngagementValue from '../components/common/EngagementValue';
 import ActionButtons from '../components/common/ActionButtons';
 import Button from '../components/common/Button';
 import Card from '../components/common/Card';
+import ConfirmationModal from '../components/common/ConfirmationModal';
 import campaignService from '../supabase/api/campaignService';
 import toast from 'react-hot-toast';
 import './History.css';
@@ -19,6 +20,9 @@ const History = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [campaignToDelete, setCampaignToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Load campaigns on mount
   useEffect(() => {
@@ -80,24 +84,35 @@ const History = () => {
     toast.success('Campaigns refreshed');
   };
 
-  const handleDeleteCampaign = async (campaignId) => {
-    if (!window.confirm('Are you sure you want to delete this campaign? This action cannot be undone.')) {
-      return;
-    }
+  const handleDeleteCampaign = (campaignId) => {
+    const campaign = campaigns.find(c => c.id === campaignId);
+    setCampaignToDelete(campaign);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteCampaign = async () => {
+    if (!campaignToDelete) return;
 
     try {
+      setIsDeleting(true);
       toast.loading('Deleting campaign...', { id: 'delete-campaign' });
 
-      const result = await campaignService.deleteCampaign(campaignId);
+      const result = await campaignService.deleteCampaign(campaignToDelete.id);
 
       if (result.success) {
         toast.success('Campaign deleted successfully', { id: 'delete-campaign' });
         // Remove from local state
-        setCampaigns(campaigns.filter(campaign => campaign.id !== campaignId));
+        setCampaigns(campaigns.filter(campaign => campaign.id !== campaignToDelete.id));
       }
+
+      // Close modal
+      setShowDeleteModal(false);
+      setCampaignToDelete(null);
     } catch (error) {
       console.error('Error deleting campaign:', error);
       toast.error('Failed to delete campaign', { id: 'delete-campaign' });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -344,6 +359,31 @@ const History = () => {
             />
           )}
       </div>
+
+      <ConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setCampaignToDelete(null);
+        }}
+        onConfirm={confirmDeleteCampaign}
+        title="Delete Campaign"
+        message={
+          campaignToDelete ? (
+            <>
+              Are you sure you want to delete <strong>{campaignToDelete.blastName}</strong>?
+              This action cannot be undone.
+            </>
+          ) : (
+            'Are you sure you want to delete this campaign? This action cannot be undone.'
+          )
+        }
+        confirmText="Delete Campaign"
+        cancelText="Cancel"
+        severity="danger"
+        isLoading={isDeleting}
+        loadingText="Deleting..."
+      />
 
       <style>{`
         .stats-grid {

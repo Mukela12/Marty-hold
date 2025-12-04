@@ -16,18 +16,17 @@ const stripe = new Stripe(stripeSecretKey || '', {
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Max-Age': '86400',
 }
-
-const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response('ok', { headers: { ...corsHeaders, 'X-Function-Version': '2.0' } })
   }
 
-  console.log('[create-setup-intent] Request received')
+  console.log('[create-setup-intent] Request received - Version 2.0')
 
   try {
     // Get the JWT token from the request
@@ -37,16 +36,37 @@ serve(async (req) => {
       throw new Error('Unauthorized: Missing authorization header')
     }
 
-    // Create Supabase client with service role
-    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+    console.log('[create-setup-intent] Auth header present:', !!authHeader)
 
-    // Verify the JWT and get user
-    const token = authHeader.replace('Bearer ', '')
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+    // Debug: Check environment variables
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
+    console.log('[create-setup-intent] SUPABASE_URL configured:', !!supabaseUrl, supabaseUrl);
+    console.log('[create-setup-intent] SUPABASE_ANON_KEY configured:', !!supabaseAnonKey, supabaseAnonKey?.substring(0, 20) + '...');
+
+    // Create Supabase client with user's JWT
+    const supabaseClient = createClient(
+      supabaseUrl ?? '',
+      supabaseAnonKey ?? '',
+      {
+        global: {
+          headers: { Authorization: authHeader },
+        },
+      }
+    )
+
+    console.log('[create-setup-intent] Supabase client created, verifying JWT...')
+
+    // Extract JWT token from "Bearer <token>" header
+    const token = authHeader.replace('Bearer ', '').trim()
+
+    // Verify the JWT and get user (pass token explicitly for Edge Functions)
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token)
 
     if (authError || !user) {
       console.error('[create-setup-intent] Auth error:', authError)
-      throw new Error('Unauthorized: Invalid token')
+      console.error('[create-setup-intent] Auth error details:', JSON.stringify(authError))
+      throw new Error(`Unauthorized: Invalid token - ${authError?.message || 'User not found'}`)
     }
 
     console.log('[create-setup-intent] Authenticated user:', user.id)
@@ -62,7 +82,7 @@ serve(async (req) => {
     console.log('[create-setup-intent] Email:', email)
 
     // Check if customer already exists in Supabase
-    const { data: existingCustomer, error: customerQueryError } = await supabase
+    const { data: existingCustomer, error: customerQueryError } = await supabaseClient
       .from('customers')
       .select('stripe_customer_id')
       .eq('user_id', user.id)
@@ -98,7 +118,7 @@ serve(async (req) => {
 
       // Save customer to Supabase
       console.log('[create-setup-intent] Saving customer to Supabase')
-      const { error: insertError } = await supabase
+      const { error: insertError } = await supabaseClient
         .from('customers')
         .upsert({
           user_id: user.id,
@@ -139,7 +159,7 @@ serve(async (req) => {
         status: setupIntent.status
       }),
       {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json', 'X-Function-Version': '2.0' },
         status: 200,
       },
     )
@@ -157,7 +177,7 @@ serve(async (req) => {
         details: error.toString()
       }),
       {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json', 'X-Function-Version': '2.0' },
         status: error.message?.includes('Unauthorized') ? 401 : 500,
       },
     )

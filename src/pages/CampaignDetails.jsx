@@ -16,6 +16,7 @@ import {
   MapPin
 } from 'lucide-react';
 import DashboardLayout from '../components/layout/DashboardLayout';
+import ConfirmationModal from '../components/common/ConfirmationModal';
 import campaignService from '../supabase/api/campaignService';
 import newMoverService from '../supabase/api/newMoverService';
 import toast from 'react-hot-toast';
@@ -31,6 +32,8 @@ const CampaignDetails = () => {
   const [newMoversLoading, setNewMoversLoading] = useState(false);
   const [newMoversTotalCount, setNewMoversTotalCount] = useState(0);
   const [showAllMovers, setShowAllMovers] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Load campaign data
   useEffect(() => {
@@ -131,12 +134,13 @@ const CampaignDetails = () => {
     }
   };
 
-  const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this campaign? This action cannot be undone.')) {
-      return;
-    }
+  const handleDelete = () => {
+    setShowDeleteModal(true);
+  };
 
+  const confirmDelete = async () => {
     try {
+      setIsDeleting(true);
       toast.loading('Deleting campaign...', { id: 'delete' });
       const result = await campaignService.deleteCampaign(campaignId);
 
@@ -149,6 +153,9 @@ const CampaignDetails = () => {
     } catch (error) {
       console.error('Error deleting campaign:', error);
       toast.error('Failed to delete campaign', { id: 'delete' });
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteModal(false);
     }
   };
 
@@ -464,6 +471,28 @@ const CampaignDetails = () => {
           </div>
         </div>
       </div>
+
+      <ConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={confirmDelete}
+        title="Delete Campaign"
+        message={
+          campaign ? (
+            <>
+              Are you sure you want to delete <strong>{campaign.campaign_name}</strong>?
+              This action cannot be undone.
+            </>
+          ) : (
+            'Are you sure you want to delete this campaign? This action cannot be undone.'
+          )
+        }
+        confirmText="Delete Campaign"
+        cancelText="Cancel"
+        severity="danger"
+        isLoading={isDeleting}
+        loadingText="Deleting..."
+      />
     </DashboardLayout>
   );
 };

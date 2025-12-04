@@ -30,6 +30,7 @@ import AdminCampaigns from './pages/admin/AdminCampaigns'
 import AdminCampaignDetails from './pages/admin/AdminCampaignDetails'
 import AdminUsers from './pages/admin/AdminUsers'
 import AdminUserDetails from './pages/admin/AdminUserDetails'
+import AdminTransactions from './pages/admin/AdminTransactions'
 import AdminActivity from './pages/admin/AdminActivity'
 import AdminProtectedRoute from './components/admin/AdminProtectedRoute'
 import './App.css'
@@ -53,6 +54,7 @@ function App() {
           <Route path="campaigns/:campaignId" element={<AdminCampaignDetails />} />
           <Route path="users" element={<AdminUsers />} />
           <Route path="users/:userId" element={<AdminUserDetails />} />
+          <Route path="transactions" element={<AdminTransactions />} />
           <Route path="activity" element={<AdminActivity />} />
           <Route index element={<Navigate to="/admin/dashboard" replace />} />
         </Route>

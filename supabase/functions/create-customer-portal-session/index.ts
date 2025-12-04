@@ -19,9 +19,6 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
-const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -38,12 +35,22 @@ serve(async (req) => {
       throw new Error('Unauthorized: Missing authorization header')
     }
 
-    // Create Supabase client with service role
-    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+    // Create Supabase client with user's JWT
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      {
+        global: {
+          headers: { Authorization: authHeader },
+        },
+      }
+    )
 
-    // Verify the JWT and get user
-    const token = authHeader.replace('Bearer ', '')
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+    // Extract JWT token from "Bearer <token>" header
+    const token = authHeader.replace('Bearer ', '').trim()
+
+    // Verify the JWT and get user (pass token explicitly for Edge Functions)
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token)
 
     if (authError || !user) {
       console.error('[create-customer-portal-session] Auth error:', authError)
@@ -64,7 +71,7 @@ serve(async (req) => {
     console.log('[create-customer-portal-session] Return URL:', returnUrl)
 
     // Get customer from Supabase database (security check)
-    const { data: customer, error: customerError } = await supabase
+    const { data: customer, error: customerError } = await supabaseClient
       .from('customers')
       .select('stripe_customer_id')
       .eq('user_id', user.id)

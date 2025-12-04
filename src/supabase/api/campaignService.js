@@ -557,6 +557,282 @@ const campaignService = {
         statusCode: error.statusCode || 400
       };
     }
+  },
+
+  /**
+   * Charge campaign when admin approves it
+   * @param {string} campaignId - Campaign ID
+   * @param {string} approvedBy - Admin user ID who approved
+   * @returns {Promise<Object>} Charge result with transaction details
+   */
+  async chargeCampaignOnApproval(campaignId, approvedBy) {
+    try {
+      console.log(`[Campaign Service] Charging campaign on approval: ${campaignId}`);
+
+      // Get campaign details
+      const { campaign } = await this.getCampaignById(campaignId);
+
+      if (!campaign) {
+        throw new Error('Campaign not found');
+      }
+
+      // Calculate total cost
+      const totalCost = (campaign.postcards_sent || campaign.total_recipients || 0) * 3.00;
+      const totalCostCents = Math.round(totalCost * 100);
+
+      if (totalCostCents < 50) {
+        throw new Error('Campaign cost must be at least $0.50');
+      }
+
+      console.log(`[Campaign Service] Calculated cost: $${totalCost.toFixed(2)} for ${campaign.postcards_sent || campaign.total_recipients} postcards`);
+
+      // Import payment service here to avoid circular dependency
+      const { default: paymentService } = await import('./paymentService.js');
+
+      // Charge the campaign
+      const chargeResult = await paymentService.chargeCampaign(
+        campaignId,
+        totalCostCents,
+        {
+          campaign_name: campaign.campaign_name,
+          billing_reason: 'campaign_approval',
+          postcard_count: (campaign.postcards_sent || campaign.total_recipients).toString(),
+        }
+      );
+
+      console.log(`[Campaign Service] Charge result:`, chargeResult);
+
+      // Update campaign based on payment result
+      if (chargeResult.success && chargeResult.status === 'succeeded') {
+        // Payment succeeded immediately
+        await this.updateCampaign(campaignId, {
+          payment_status: 'paid',
+          payment_intent_id: chargeResult.paymentIntentId,
+          paid_at: new Date().toISOString(),
+          approved_by: approvedBy,
+          approved_at: new Date().toISOString(),
+          payment_requires_action: false,
+          payment_action_url: null,
+          total_cost: totalCost,
+        });
+
+        return {
+          success: true,
+          status: 'succeeded',
+          message: 'Campaign approved and payment successful',
+          transactionId: chargeResult.paymentIntentId,
+          amount: totalCost,
+        };
+
+      } else if (chargeResult.requiresAction) {
+        // Payment requires 3D Secure authentication
+        await this.updateCampaign(campaignId, {
+          payment_status: 'processing',
+          payment_intent_id: chargeResult.paymentIntentId,
+          payment_requires_action: true,
+          payment_action_url: chargeResult.actionUrl,
+          total_cost: totalCost,
+        });
+
+        return {
+          success: true,
+          status: 'requires_action',
+          message: 'Payment requires authentication. User will be notified.',
+          actionUrl: chargeResult.actionUrl,
+          transactionId: chargeResult.paymentIntentId,
+          amount: totalCost,
+        };
+
+      } else if (chargeResult.status === 'processing') {
+        // Payment is being processed async
+        await this.updateCampaign(campaignId, {
+          payment_status: 'processing',
+          payment_intent_id: chargeResult.paymentIntentId,
+          total_cost: totalCost,
+        });
+
+        return {
+          success: true,
+          status: 'processing',
+          message: 'Payment is processing. Will be updated via webhook.',
+          transactionId: chargeResult.paymentIntentId,
+          amount: totalCost,
+        };
+
+      } else {
+        // Payment failed
+        throw new Error(chargeResult.error || 'Payment failed');
+      }
+
+    } catch (error) {
+      console.error('[Campaign Service] Error charging campaign on approval:', error);
+
+      // Update campaign to keep it in pending state
+      try {
+        await this.updateCampaign(campaignId, {
+          payment_status: 'failed',
+        });
+      } catch (updateError) {
+        console.error('[Campaign Service] Error updating campaign payment status:', updateError);
+      }
+
+      throw {
+        error: error.message || 'Failed to charge campaign',
+        statusCode: error.statusCode || 400,
+        userFriendlyMessage: this.getUserFriendlyPaymentError(error.message),
+      };
+    }
+  },
+
+  /**
+   * Add new movers to campaign and schedule charge for daily batch
+   * @param {string} campaignId - Campaign ID
+   * @param {Array} newMoverData - Array of new mover records
+   * @param {boolean} chargeImmediately - If true, charge now instead of batching (default: false)
+   * @returns {Promise<Object>} Result with charge scheduling details
+   */
+  async addNewMoversAndScheduleCharge(campaignId, newMoverData, chargeImmediately = false) {
+    try {
+      console.log(`[Campaign Service] Adding new movers to campaign: ${campaignId}`);
+
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        throw new Error('User not authenticated');
+      }
+
+      // Get campaign
+      const { campaign } = await this.getCampaignById(campaignId);
+
+      if (!campaign) {
+        throw new Error('Campaign not found');
+      }
+
+      // Verify campaign is approved and paid
+      if (campaign.approval_status !== 'approved' || campaign.payment_status !== 'paid') {
+        throw new Error('Campaign must be approved and paid before adding new movers');
+      }
+
+      // Calculate new mover count and cost
+      const newMoverCount = newMoverData.length;
+      const additionalCost = newMoverCount * 3.00;
+      const additionalCostCents = Math.round(additionalCost * 100);
+
+      console.log(`[Campaign Service] Adding ${newMoverCount} new movers, cost: $${additionalCost.toFixed(2)}`);
+
+      // Add new movers to campaign (update campaign data)
+      const updatedRecipients = campaign.total_recipients + newMoverCount;
+      const updatedPostcardsSent = (campaign.postcards_sent || 0) + newMoverCount;
+
+      await this.updateCampaign(campaignId, {
+        total_recipients: updatedRecipients,
+        postcards_sent: updatedPostcardsSent,
+        new_mover_ids: [...(campaign.new_mover_ids || []), ...newMoverData.map(m => m.id)],
+      });
+
+      // Determine if test mode (check if Stripe publishable key is test key)
+      const isTestMode = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY?.includes('_test_') || false;
+
+      if (chargeImmediately) {
+        // Charge immediately
+        const { default: paymentService } = await import('./paymentService.js');
+
+        const chargeResult = await paymentService.chargeCampaign(
+          campaignId,
+          additionalCostCents,
+          {
+            campaign_name: campaign.campaign_name,
+            billing_reason: 'new_mover_addition',
+            new_mover_count: newMoverCount.toString(),
+          }
+        );
+
+        return {
+          success: true,
+          charged: true,
+          newMoverCount,
+          amount: additionalCost,
+          transactionId: chargeResult.paymentIntentId,
+          status: chargeResult.status,
+        };
+
+      } else {
+        // Schedule for daily batch processing
+        const { error: insertError } = await supabase
+          .from('pending_charges')
+          .insert({
+            campaign_id: campaignId,
+            user_id: user.id,
+            new_mover_count: newMoverCount,
+            amount_cents: additionalCostCents,
+            amount_dollars: additionalCost,
+            billing_reason: 'new_mover_addition',
+            scheduled_for: new Date().toISOString().split('T')[0], // Today's date
+            is_test_mode: isTestMode,
+            metadata: {
+              campaign_name: campaign.campaign_name,
+              added_at: new Date().toISOString(),
+            },
+          });
+
+        if (insertError) {
+          throw insertError;
+        }
+
+        console.log(`[Campaign Service] Pending charge scheduled for daily batch`);
+
+        return {
+          success: true,
+          charged: false,
+          scheduled: true,
+          newMoverCount,
+          amount: additionalCost,
+          scheduledFor: 'tomorrow at 2am UTC',
+          message: 'New movers added. Charge will be processed in the next daily batch.',
+        };
+      }
+
+    } catch (error) {
+      console.error('[Campaign Service] Error adding new movers and scheduling charge:', error);
+      throw {
+        error: error.message || 'Failed to add new movers',
+        statusCode: error.statusCode || 400
+      };
+    }
+  },
+
+  /**
+   * Get user-friendly payment error message
+   * @param {string} errorMessage - Technical error message
+   * @returns {string} User-friendly message
+   */
+  getUserFriendlyPaymentError(errorMessage) {
+    if (!errorMessage) return 'Payment failed. Please try again.';
+
+    const message = errorMessage.toLowerCase();
+
+    if (message.includes('no payment method') || message.includes('payment method not found')) {
+      return 'User has no payment method on file. Please ask them to add a payment method in Settings → Billing.';
+    }
+
+    if (message.includes('declined')) {
+      return 'Card was declined. Please ask the user to update their payment method.';
+    }
+
+    if (message.includes('insufficient')) {
+      return 'Insufficient funds. Please ask the user to use a different payment method.';
+    }
+
+    if (message.includes('expired')) {
+      return 'Card has expired. Please ask the user to update their payment method.';
+    }
+
+    if (message.includes('unauthorized')) {
+      return 'User is not authorized for this campaign.';
+    }
+
+    // Default to original message if no match
+    return errorMessage;
   }
 };
 

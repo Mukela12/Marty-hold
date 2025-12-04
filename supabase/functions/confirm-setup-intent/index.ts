@@ -17,18 +17,16 @@ const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Max-Age': '86400',
 }
-
-const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response('ok', { headers: { ...corsHeaders, 'X-Function-Version': '2.0' } })
   }
 
-  console.log('[confirm-setup-intent] Request received')
+  console.log('[confirm-setup-intent] Request received - Version 2.0')
 
   try {
     // Get the JWT token from the request
@@ -38,12 +36,22 @@ serve(async (req) => {
       throw new Error('Unauthorized: Missing authorization header')
     }
 
-    // Create Supabase client with service role
-    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+    // Create Supabase client with user's JWT
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      {
+        global: {
+          headers: { Authorization: authHeader },
+        },
+      }
+    )
 
-    // Verify the JWT and get user
-    const token = authHeader.replace('Bearer ', '')
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+    // Extract JWT token from "Bearer <token>" header
+    const token = authHeader.replace('Bearer ', '').trim()
+
+    // Verify the JWT and get user (pass token explicitly for Edge Functions)
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token)
 
     if (authError || !user) {
       console.error('[confirm-setup-intent] Auth error:', authError)
@@ -76,7 +84,7 @@ serve(async (req) => {
 
     // Get customer from database
     console.log('[confirm-setup-intent] Looking up customer for user:', user.id)
-    const { data: customer, error: customerError } = await supabase
+    const { data: customer, error: customerError } = await supabaseClient
       .from('customers')
       .select('id, stripe_customer_id')
       .eq('user_id', user.id)
@@ -105,7 +113,7 @@ serve(async (req) => {
     console.log('[confirm-setup-intent] Card last4:', pmDetails.card?.last4)
 
     // Check if this is the first payment method for this customer
-    const { data: existingMethods, error: existingError } = await supabase
+    const { data: existingMethods, error: existingError } = await supabaseClient
       .from('payment_methods')
       .select('id')
       .eq('customer_id', customer.id)
@@ -119,7 +127,7 @@ serve(async (req) => {
 
     // Save payment method to database
     console.log('[confirm-setup-intent] Saving payment method to database')
-    const { data: savedMethod, error: insertError } = await supabase
+    const { data: savedMethod, error: insertError } = await supabaseClient
       .from('payment_methods')
       .insert({
         customer_id: customer.id,
@@ -176,7 +184,7 @@ serve(async (req) => {
         }
       }),
       {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json', 'X-Function-Version': '2.0' },
         status: 200,
       },
     )
@@ -194,7 +202,7 @@ serve(async (req) => {
         details: error.toString()
       }),
       {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { ...corsHeaders, 'Content-Type': 'application/json', 'X-Function-Version': '2.0' },
         status: error.message?.includes('Unauthorized') ? 401 :
                error.message?.includes('not found') ? 404 : 500,
       },

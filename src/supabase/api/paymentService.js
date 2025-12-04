@@ -98,26 +98,126 @@ export const paymentService = {
   },
 
   /**
+   * Charge campaign - Main function for automatic billing
+   * @param {string} campaignId - Campaign ID
+   * @param {number} amountCents - Amount in cents
+   * @param {Object} metadata - Additional metadata
+   * @returns {Promise<Object>} Charge result
+   */
+  async chargeCampaign(campaignId, amountCents, metadata = {}) {
+    console.log('[Payment Service] Charging campaign:', campaignId, 'Amount:', amountCents / 100);
+
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session) {
+      throw new Error('Not authenticated');
+    }
+
+    try {
+      // Get user's customer record
+      const { data: customer, error: customerError } = await supabase
+        .from('customers')
+        .select('id, stripe_customer_id')
+        .eq('user_id', session.user.id)
+        .single();
+
+      if (customerError || !customer) {
+        throw new Error('No customer record found. Please add a payment method first.');
+      }
+
+      // Get user's default payment method
+      const { data: paymentMethod, error: pmError } = await supabase
+        .from('payment_methods')
+        .select('stripe_payment_method_id, card_brand, card_last4, card_exp_month, card_exp_year')
+        .eq('customer_id', customer.id)
+        .eq('is_default', true)
+        .single();
+
+      if (pmError || !paymentMethod) {
+        throw new Error('No payment method on file. Please add a payment method first.');
+      }
+
+      // Check if card is expired
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth() + 1;
+
+      if (
+        paymentMethod.card_exp_year < currentYear ||
+        (paymentMethod.card_exp_year === currentYear && paymentMethod.card_exp_month < currentMonth)
+      ) {
+        throw new Error('Payment method has expired. Please update your payment method.');
+      }
+
+      // Determine if test mode
+      const isTestMode = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY?.includes('_test_') || false;
+
+      // Generate idempotency key to prevent duplicate charges
+      const idempotencyKey = `campaign_${campaignId}_${Date.now()}`;
+
+      // Call create-payment-intent Edge Function with all required parameters
+      const { data: response, error } = await supabase.functions.invoke('create-payment-intent', {
+        body: {
+          amount: amountCents,
+          description: metadata.campaign_name ?
+            `${metadata.campaign_name} - Postcard Campaign` :
+            'Postcard Campaign',
+          metadata: {
+            ...metadata,
+            campaign_id: campaignId,
+            user_id: session.user.id,
+          },
+          customerId: customer.stripe_customer_id,
+          paymentMethodId: paymentMethod.stripe_payment_method_id,
+          campaignId: campaignId,
+          isTestMode: isTestMode,
+          idempotencyKey: idempotencyKey,
+        },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (error) {
+        console.error('[Payment Service] Error from Edge Function:', error);
+        throw error;
+      }
+
+      console.log('[Payment Service] Charge response:', response);
+
+      return response;
+
+    } catch (error) {
+      console.error('[Payment Service] Error charging campaign:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Legacy function - kept for backward compatibility
    * Charge customer for postcard campaign
    * @param {number} postcardCount - Number of postcards
    * @param {Object} campaignData - Campaign data for metadata
    * @returns {Promise<Object>} Charge result
+   * @deprecated Use chargeCampaign() instead
    */
   async chargeForCampaign(postcardCount, campaignData = {}) {
     const { calculatePostcardCost } = await import('../../utils/pricing');
 
     const pricing = calculatePostcardCost(postcardCount);
-
-    const description = `Postcard Campaign - ${postcardCount} postcard${postcardCount !== 1 ? 's' : ''}`;
+    const amountCents = Math.round(pricing.total * 100);
 
     const metadata = {
-      type: 'postcard_campaign',
+      billing_reason: 'campaign_launch',
       postcard_count: postcardCount.toString(),
       campaign_name: campaignData.name || 'Untitled Campaign',
-      ...(campaignData.campaign_id && { campaign_id: campaignData.campaign_id.toString() })
     };
 
-    return await this.createPaymentIntent(pricing.total, description, metadata);
+    return await this.chargeCampaign(
+      campaignData.campaign_id || 'unknown',
+      amountCents,
+      metadata
+    );
   },
 
   async confirmSetupIntent(setupIntentId) {
@@ -265,6 +365,109 @@ export const paymentService = {
   },
 
   /**
+   * Save a new payment method using Stripe CardElement
+   * @param {Object} cardElement - Stripe CardElement
+   * @returns {Promise<Object>} Result object with success status
+   */
+  async savePaymentMethod(cardElement) {
+    try {
+      // Get session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+      if (sessionError || !session) {
+        console.error('[paymentService] No valid session found:', sessionError);
+        return { success: false, error: 'Not authenticated' };
+      }
+
+      const user = session.user;
+
+      // Get user profile for email
+      const { data: profile } = await supabase
+        .from('profile')
+        .select('email')
+        .eq('user_id', user.id)
+        .single();
+
+      const email = profile?.email || user.email;
+
+      // Create SetupIntent via Edge Function
+      const { data: setupResponse, error: setupError } = await supabase.functions.invoke('create-setup-intent', {
+        body: { email },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (setupError || !setupResponse || !setupResponse.clientSecret) {
+        // Check if setupResponse has error details from the Edge Function
+        const edgeFunctionError = setupResponse?.error || setupResponse?.details;
+        const errorMsg = edgeFunctionError || setupError?.message || 'Failed to create setup intent';
+        console.error('[paymentService] Setup error:', setupError);
+        console.error('[paymentService] Setup response:', setupResponse);
+        console.error('[paymentService] Final error message:', errorMsg);
+        return { success: false, error: errorMsg };
+      }
+
+      // Confirm the setup intent with Stripe (with 30 second timeout)
+      const stripe = window.Stripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+
+      // Wrap Stripe confirmation with timeout to handle both timeout and actual errors
+      const confirmWithTimeout = async () => {
+        return Promise.race([
+          stripe.confirmCardSetup(
+            setupResponse.clientSecret,
+            {
+              payment_method: {
+                card: cardElement,
+              },
+            }
+          ),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Payment confirmation timed out. Please check your connection and try again.')), 30000)
+          )
+        ]);
+      };
+
+      let result;
+      try {
+        result = await confirmWithTimeout();
+      } catch (timeoutError) {
+        console.error('[paymentService] Timeout or network error:', timeoutError);
+        return { success: false, error: timeoutError.message };
+      }
+
+      const { setupIntent, error: confirmError } = result;
+
+      if (confirmError) {
+        console.error('[paymentService] Error confirming setup intent:', confirmError);
+        return { success: false, error: confirmError.message };
+      }
+
+      if (setupIntent.status !== 'succeeded') {
+        return { success: false, error: 'Payment method setup failed' };
+      }
+
+      // Add payment method details to setupIntent object for addPaymentMethod
+      setupIntent.payment_method_details = {
+        card: {
+          brand: setupIntent.payment_method?.card?.brand || 'unknown',
+          last4: setupIntent.payment_method?.card?.last4 || '0000',
+          exp_month: setupIntent.payment_method?.card?.exp_month || 1,
+          exp_year: setupIntent.payment_method?.card?.exp_year || 2025,
+        }
+      };
+
+      // Add the payment method to database
+      await this.addPaymentMethod(setupIntent);
+
+      return { success: true };
+    } catch (error) {
+      console.error('[paymentService] Error saving payment method:', error);
+      return { success: false, error: error.message || 'Failed to save payment method' };
+    }
+  },
+
+  /**
    * Add a payment method using Stripe SetupIntent
    * @param {Object} setupIntent - Stripe SetupIntent object
    * @returns {Promise<Object>} Created payment method
@@ -344,7 +547,7 @@ export const paymentService = {
 
     if (sessionError || !session) {
       console.error('[paymentService] No valid session found:', sessionError);
-      throw new Error('Not authenticated');
+      return { success: false, error: 'Not authenticated' };
     }
 
     const user = session.user;
@@ -359,11 +562,11 @@ export const paymentService = {
 
       if (customerError) {
         console.error('[paymentService] Error getting customer:', customerError);
-        throw customerError;
+        return { success: false, error: customerError.message };
       }
 
       if (!customer) {
-        throw new Error('Customer not found');
+        return { success: false, error: 'Customer not found' };
       }
 
       // Remove default flag from all payment methods
@@ -384,11 +587,13 @@ export const paymentService = {
 
       if (error) {
         console.error('[paymentService] Error setting default payment method:', error);
-        throw error;
+        return { success: false, error: error.message };
       }
+
+      return { success: true };
     } catch (error) {
       console.error('[paymentService] Error setting default payment method:', error);
-      throw error;
+      return { success: false, error: error.message || 'Failed to set default payment method' };
     }
   },
 
@@ -402,7 +607,7 @@ export const paymentService = {
 
     if (sessionError || !session) {
       console.error('[paymentService] No valid session found:', sessionError);
-      throw new Error('Not authenticated');
+      return { success: false, error: 'Not authenticated' };
     }
 
     const user = session.user;
@@ -417,11 +622,11 @@ export const paymentService = {
 
       if (customerError) {
         console.error('[paymentService] Error getting customer:', customerError);
-        throw customerError;
+        return { success: false, error: customerError.message };
       }
 
       if (!customer) {
-        throw new Error('Customer not found');
+        return { success: false, error: 'Customer not found' };
       }
 
       // Delete the payment method
@@ -433,7 +638,7 @@ export const paymentService = {
 
       if (error) {
         console.error('[paymentService] Error deleting payment method:', error);
-        throw error;
+        return { success: false, error: error.message };
       }
 
       // If this was the default method, set another as default
@@ -446,9 +651,11 @@ export const paymentService = {
       if (remainingMethods && remainingMethods.length > 0 && !remainingMethods[0].is_default) {
         await this.setDefaultPaymentMethod(remainingMethods[0].id);
       }
+
+      return { success: true };
     } catch (error) {
       console.error('[paymentService] Error removing payment method:', error);
-      throw error;
+      return { success: false, error: error.message || 'Failed to remove payment method' };
     }
   },
 

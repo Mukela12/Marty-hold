@@ -1,10 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Layers, Check, ExternalLink, MapPin, DollarSign, Send, AlertCircle } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { Layers, Check, ExternalLink, MapPin, DollarSign, Send, AlertCircle, CreditCard, Plus, Trash2, Star, Receipt, Calendar, Loader } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import ConfirmationModal from '../common/ConfirmationModal';
 import { paymentService } from '../../supabase/api/paymentService';
 import campaignService from '../../supabase/api/campaignService';
 import toast from 'react-hot-toast';
 import './BillingTab.css';
+
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 const BillingTab = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -13,23 +18,91 @@ const BillingTab = () => {
   const [hasPaymentMethod, setHasPaymentMethod] = useState(false);
   const [isCheckingPayment, setIsCheckingPayment] = useState(true);
 
+  // Payment methods state
+  const [paymentMethods, setPaymentMethods] = useState([]);
+  const [loadingMethods, setLoadingMethods] = useState(true);
+  const [showAddCard, setShowAddCard] = useState(false);
+  const [processingAction, setProcessingAction] = useState(null);
+
+  // Delete confirmation modal state
+  const [showRemoveModal, setShowRemoveModal] = useState(false);
+  const [paymentMethodToRemove, setPaymentMethodToRemove] = useState(null);
+  const [isRemoving, setIsRemoving] = useState(false);
+
   useEffect(() => {
     loadZipCodeAggregation();
-    checkPaymentMethodStatus();
+    loadPaymentMethods();
   }, []);
 
-  const checkPaymentMethodStatus = async () => {
+  const loadPaymentMethods = async () => {
     try {
+      setLoadingMethods(true);
       setIsCheckingPayment(true);
 
-      // Try to get payment methods
       const methods = await paymentService.getPaymentMethods();
+      setPaymentMethods(methods || []);
       setHasPaymentMethod(methods && methods.length > 0);
     } catch (error) {
-      console.error('[BillingTab] Failed to check payment methods:', error);
+      console.error('[BillingTab] Failed to load payment methods:', error);
+      setPaymentMethods([]);
       setHasPaymentMethod(false);
     } finally {
+      setLoadingMethods(false);
       setIsCheckingPayment(false);
+    }
+  };
+
+  const handleSetDefaultPaymentMethod = async (paymentMethodId) => {
+    try {
+      setProcessingAction(`default-${paymentMethodId}`);
+
+      const result = await paymentService.setDefaultPaymentMethod(paymentMethodId);
+
+      if (result.success) {
+        toast.success('Default payment method updated');
+        loadPaymentMethods();
+      } else {
+        toast.error(result.error || 'Failed to update default payment method');
+      }
+    } catch (error) {
+      console.error('Error setting default payment method:', error);
+      toast.error('Failed to update default payment method');
+    } finally {
+      setProcessingAction(null);
+    }
+  };
+
+  const handleRemovePaymentMethod = (paymentMethod) => {
+    setPaymentMethodToRemove(paymentMethod);
+    setShowRemoveModal(true);
+  };
+
+  const confirmRemovePaymentMethod = async () => {
+    if (!paymentMethodToRemove) return;
+
+    try {
+      setIsRemoving(true);
+      setProcessingAction(`remove-${paymentMethodToRemove.id}`);
+
+      const result = await paymentService.removePaymentMethod(paymentMethodToRemove.id);
+
+      if (result.success) {
+        toast.success('Payment method removed');
+        loadPaymentMethods();
+        checkPaymentMethodStatus();
+      } else {
+        toast.error(result.error || 'Failed to remove payment method');
+      }
+
+      // Close modal
+      setShowRemoveModal(false);
+      setPaymentMethodToRemove(null);
+    } catch (error) {
+      console.error('Error removing payment method:', error);
+      toast.error('Failed to remove payment method');
+    } finally {
+      setIsRemoving(false);
+      setProcessingAction(null);
     }
   };
 
@@ -106,9 +179,9 @@ const BillingTab = () => {
       setIsLoadingPortal(true);
       toast.loading('Opening billing portal...', { id: 'billing-portal' });
 
-      // Add timeout to prevent infinite hang
+      // Add timeout to prevent infinite hang (60 seconds)
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Request timed out. Please try again.')), 30000)
+        setTimeout(() => reject(new Error('Request timed out. Please check your connection and try again.')), 60000)
       );
 
       const portalPromise = paymentService.createCustomerPortalSession(window.location.href);
@@ -160,6 +233,143 @@ const BillingTab = () => {
         </div>
       </div>
 
+      {/* Payment Methods Section */}
+      <div className="payment-methods-section">
+        <div className="section-header">
+          <div>
+            <h3>Payment Methods</h3>
+            <p className="section-subtitle">Manage your saved payment methods</p>
+          </div>
+          {!showAddCard && paymentMethods.length > 0 && (
+            <motion.button
+              className="add-payment-btn"
+              onClick={() => setShowAddCard(true)}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <Plus size={18} />
+              Add Card
+            </motion.button>
+          )}
+        </div>
+
+        {loadingMethods ? (
+          <div className="loading-payment-methods">
+            <Loader className="spinner-icon" size={32} />
+            <p>Loading payment methods...</p>
+          </div>
+        ) : (
+          <>
+            {paymentMethods.length === 0 && !showAddCard ? (
+              <div className="no-payment-methods">
+                <CreditCard size={48} />
+                <p>No payment methods on file</p>
+                <span>Add a payment method to enable automatic billing</span>
+                <motion.button
+                  className="add-first-payment-btn"
+                  onClick={() => setShowAddCard(true)}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <Plus size={18} />
+                  Add Payment Method
+                </motion.button>
+              </div>
+            ) : (
+              <div className="payment-methods-list">
+                {paymentMethods.map((method) => (
+                  <motion.div
+                    key={method.id}
+                    className={`payment-method-card ${method.is_default ? 'default' : ''}`}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                  >
+                    <div className="payment-method-icon">
+                      <CreditCard size={24} />
+                    </div>
+
+                    <div className="payment-method-info">
+                      <div className="card-brand-row">
+                        <span className="card-brand">{method.card_brand}</span>
+                        {method.is_default && (
+                          <span className="default-badge">
+                            <Star size={12} fill="currentColor" />
+                            Default
+                          </span>
+                        )}
+                      </div>
+                      <span className="card-number">•••• {method.card_last4}</span>
+                      <span className="card-expiry">
+                        <Calendar size={14} />
+                        Expires {String(method.card_exp_month).padStart(2, '0')}/{method.card_exp_year}
+                      </span>
+                    </div>
+
+                    <div className="payment-method-actions">
+                      {!method.is_default && (
+                        <motion.button
+                          className="set-default-btn"
+                          onClick={() => handleSetDefaultPaymentMethod(method.id)}
+                          disabled={processingAction === `default-${method.id}`}
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                        >
+                          {processingAction === `default-${method.id}` ? (
+                            <Loader className="btn-spinner" size={14} />
+                          ) : (
+                            <Star size={14} />
+                          )}
+                          {processingAction === `default-${method.id}` ? 'Setting...' : 'Set as Default'}
+                        </motion.button>
+                      )}
+
+                      <motion.button
+                        className="remove-payment-btn"
+                        onClick={() => handleRemovePaymentMethod(method)}
+                        disabled={processingAction === `remove-${method.id}` || (method.is_default && paymentMethods.length > 1)}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        title={method.is_default && paymentMethods.length > 1 ? 'Set another card as default before removing' : 'Remove payment method'}
+                      >
+                        {processingAction === `remove-${method.id}` ? (
+                          <Loader className="btn-spinner" size={14} />
+                        ) : (
+                          <Trash2 size={14} />
+                        )}
+                      </motion.button>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+
+            {/* Add Payment Method Form */}
+            <AnimatePresence>
+              {showAddCard && (
+                <motion.div
+                  className="add-payment-form"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                >
+                  <Elements stripe={stripePromise}>
+                    <AddPaymentMethodForm
+                      onSuccess={() => {
+                        setShowAddCard(false);
+                        loadPaymentMethods();
+                        checkPaymentMethodStatus();
+                      }}
+                      onCancel={() => setShowAddCard(false)}
+                    />
+                  </Elements>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </>
+        )}
+      </div>
+
       {/* Billing Portal Button */}
       <div className="billing-portal-section">
         <div className="portal-description">
@@ -185,7 +395,7 @@ const BillingTab = () => {
             <AlertCircle size={20} color="#F59E0B" />
             <div>
               <strong>No payment method on file.</strong>
-              <p style={{ margin: 0, fontSize: '14px' }}>Please complete onboarding to add a payment method before accessing the billing portal.</p>
+              <p style={{ margin: 0, fontSize: '14px' }}>Add a payment method below to enable automatic billing and access the billing portal.</p>
             </div>
           </div>
         )}
@@ -661,7 +871,132 @@ const BillingTab = () => {
           }
         }
       `}</style>
+
+      <ConfirmationModal
+        isOpen={showRemoveModal}
+        onClose={() => {
+          setShowRemoveModal(false);
+          setPaymentMethodToRemove(null);
+        }}
+        onConfirm={confirmRemovePaymentMethod}
+        title="Remove Payment Method"
+        message={
+          paymentMethodToRemove ? (
+            <>
+              Are you sure you want to remove the card ending in <strong>****{paymentMethodToRemove.last4}</strong>?
+            </>
+          ) : (
+            'Are you sure you want to remove this payment method?'
+          )
+        }
+        confirmText="Remove Payment Method"
+        cancelText="Cancel"
+        severity="warning"
+        isLoading={isRemoving}
+        loadingText="Removing..."
+      />
     </div>
+  );
+};
+
+// Add Payment Method Form Component
+const AddPaymentMethodForm = ({ onSuccess, onCancel }) => {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+    if (!stripe || !elements) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Get the CardElement
+      const cardElement = elements.getElement(CardElement);
+
+      console.log('[BillingTab] Starting payment method addition...');
+
+      // Create SetupIntent
+      const result = await paymentService.savePaymentMethod(cardElement);
+
+      console.log('[BillingTab] Payment method result:', result);
+
+      if (result.success) {
+        toast.success('Payment method added successfully');
+        onSuccess();
+      } else {
+        console.error('[BillingTab] Payment failed:', result.error);
+        setError(result.error || 'Failed to add payment method');
+        toast.error(result.error || 'Failed to add payment method');
+      }
+    } catch (err) {
+      console.error('Error adding payment method:', err);
+      setError(err.message || 'Failed to add payment method');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const cardElementOptions = {
+    style: {
+      base: {
+        fontSize: '16px',
+        color: '#1A202C',
+        '::placeholder': {
+          color: '#9CA3AF',
+        },
+      },
+      invalid: {
+        color: '#E53E3E',
+      },
+    },
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <h4>Add New Payment Method</h4>
+
+      <div className="stripe-card-element">
+        <CardElement options={cardElementOptions} />
+      </div>
+
+      {error && <div className="card-error">{error}</div>}
+
+      <div className="form-actions">
+        <button
+          type="button"
+          className="cancel-btn"
+          onClick={onCancel}
+          disabled={loading}
+        >
+          Cancel
+        </button>
+
+        <button
+          type="submit"
+          className="submit-btn"
+          disabled={!stripe || loading}
+        >
+          {loading ? (
+            <>
+              <Loader className="btn-spinner" size={16} />
+              Adding...
+            </>
+          ) : (
+            <>
+              <CreditCard size={16} />
+              Add Payment Method
+            </>
+          )}
+        </button>
+      </div>
+    </form>
   );
 };
 
