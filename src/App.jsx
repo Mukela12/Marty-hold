@@ -7,11 +7,11 @@ import EmailVerification from './pages/auth/EmailVerification'
 import Onboarding from './pages/onboarding/Onboarding'
 import Dashboard from './pages/Dashboard'
 import CreateCampaign from './pages/CreateCampaign'
-import CampaignStep1 from './pages/campaign/CampaignStep1'
-import CampaignStep2 from './pages/campaign/CampaignStep2'
-import CampaignStep3 from './pages/campaign/CampaignStep3'
-import CampaignStep4 from './pages/campaign/CampaignStep4'
-import CampaignStep5 from './pages/campaign/CampaignStep5'
+import CampaignStep1 from './pages/campaign/v1/CampaignStep1'
+import CampaignStep2 from './pages/campaign/v1/CampaignStep2'
+import CampaignStep3 from './pages/campaign/v1/CampaignStep3'
+import CampaignStep4 from './pages/campaign/v1/CampaignStep4'
+import CampaignStep5 from './pages/campaign/v1/CampaignStep5'
 import CampaignEdit from './pages/CampaignEdit'
 import CampaignDetails from './pages/CampaignDetails'
 import BlastStep1 from './pages/blast/BlastStep1'
@@ -34,6 +34,9 @@ import AdminTransactions from './pages/admin/AdminTransactions'
 import AdminActivity from './pages/admin/AdminActivity'
 import AdminProtectedRoute from './components/admin/AdminProtectedRoute'
 import './App.css'
+
+/* campaign-V2 Step1 */
+import CompanyDetails from './pages/campaign/v2/GetCompanyDetails/CompanyDetails'
 
 function App() {
   return (
@@ -97,7 +100,7 @@ function App() {
           path="/create-campaign"
           element={
             <ProtectedRoute requireEmailVerification requireOnboarding>
-              <CampaignStep1 />
+              <CompanyDetails />
             </ProtectedRoute>
           }
         />
@@ -105,7 +108,7 @@ function App() {
           path="/campaign/step1"
           element={
             <ProtectedRoute requireEmailVerification requireOnboarding>
-              <CampaignStep1 />
+              <CompanyDetails />
             </ProtectedRoute>
           }
         />

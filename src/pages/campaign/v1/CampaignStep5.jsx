@@ -2,11 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ChevronLeft } from 'lucide-react';
-import { useAuth } from '../../contexts/AuthContext';
-import ProcessLayout from '../../components/process/ProcessLayout';
-import { formatPrice } from '../../utils/pricing';
-import campaignService from '../../supabase/api/campaignService';
-import { paymentService } from '../../supabase/api/paymentService';
+import { useAuth } from '../../../contexts/AuthContext';
+import ProcessLayout from '../../../components/process/ProcessLayout';
+import { formatPrice } from '../../../utils/pricing';
+import campaignService from '../../../supabase/api/campaignService';
+import { paymentService } from '../../../supabase/api/paymentService';
 import toast from 'react-hot-toast';
 
 const CampaignStep5 = () => {

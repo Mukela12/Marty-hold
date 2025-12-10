@@ -7,7 +7,7 @@ import { supabase } from '../supabase/integration/client';
  */
 
 const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
-const CLOUDINARY_UPLOAD_PRESET = 'postcard_uploads'; // You'll need to create this in Cloudinary dashboard
+const CLOUDINARY_UPLOAD_PRESET = 'master'; // You'll need to create this in Cloudinary dashboard
 
 const cloudinaryService = {
   /**

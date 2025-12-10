@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import ProcessLayout from '../../components/process/ProcessLayout';
-import FabricEditor from '../../components/PostcardEditor/FabricEditor';
+import ProcessLayout from '../../../components/process/ProcessLayout';
+import FabricEditor from '../../../components/PostcardEditor/FabricEditor';
 
 const CampaignStep3 = () => {
   const navigate = useNavigate();

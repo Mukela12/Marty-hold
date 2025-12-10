@@ -2,13 +2,13 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ChevronLeft, Check, Palette } from 'lucide-react';
-import ProcessLayout from '../../components/process/ProcessLayout';
-import { FormInput, FormSelect } from '../../components/ui';
-import brandfetchService from '../../supabase/api/brandFetchService';
-import supabaseCompanyService from '../../supabase/api/companyService';
-import campaignService from '../../supabase/api/campaignService';
+import ProcessLayout from '../../../components/process/ProcessLayout';
+import { FormInput, FormSelect } from '../../../components/ui';
+import brandfetchService from '../../../supabase/api/brandFetchService';
+import supabaseCompanyService from '../../../supabase/api/companyService';
+import campaignService from '../../../supabase/api/campaignService';
 import toast from 'react-hot-toast';
-import '../onboarding/onboarding.css';
+import '../../../pages/onboarding/onboarding-step2-redesign.css';
 
 const CampaignStep1 = () => {
   const navigate = useNavigate();

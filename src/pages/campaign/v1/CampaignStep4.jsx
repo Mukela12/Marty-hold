@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ChevronLeft, MapPin, CheckSquare, Trash2, CheckCircle, AlertCircle, DollarSign, XCircle } from 'lucide-react';
-import ProcessLayout from '../../components/process/ProcessLayout';
-import newMoverService from '../../supabase/api/newMoverService';
-import { parseMultipleZipCodes } from '../../utils/zipCode';
-import { calculatePostcardCost, formatPrice } from '../../utils/pricing';
+import ProcessLayout from '../../../components/process/ProcessLayout';
+import newMoverService from '../../../supabase/api/newMoverService';
+import { parseMultipleZipCodes } from '../../../utils/zipCode';
+import { calculatePostcardCost, formatPrice } from '../../../utils/pricing';
 import toast from 'react-hot-toast'
 
 const CampaignStep4 = () => {

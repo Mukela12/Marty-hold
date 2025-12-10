@@ -2,14 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ChevronLeft } from 'lucide-react';
-import ProcessLayout from '../../components/process/ProcessLayout';
-import LoadingScreen from '../../components/onboarding/LoadingScreen';
-import OnboardingFooter from '../../components/onboarding/OnboardingFooter';
-import TemplateCardSkeleton from '../../components/common/TemplateCardSkeleton';
-import supabaseCompanyService from '../../supabase/api/companyService';
-import campaignService from '../../supabase/api/campaignService';
+import ProcessLayout from '../../../components/process/ProcessLayout';
+import LoadingScreen from '../../../components/onboarding/LoadingScreen';
+import OnboardingFooter from '../../../components/onboarding/OnboardingFooter';
+import TemplateCardSkeleton from '../../../components/common/TemplateCardSkeleton';
+import supabaseCompanyService from '../../../supabase/api/companyService';
+import campaignService from '../../../supabase/api/campaignService';
 import toast from 'react-hot-toast';
-import '../onboarding/onboarding-step2-redesign.css';
+import '../../onboarding/onboarding-step2-redesign.css';
 
 const CampaignStep2 = () => {
   const navigate = useNavigate();
