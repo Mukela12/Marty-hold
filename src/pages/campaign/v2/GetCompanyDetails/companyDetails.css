@@ -1,0 +1,12 @@
+.card-gradient {
+  background: linear-gradient(
+    to bottom right,
+    rgba(0, 123, 255, 0.05),
+    #ffffff,
+    rgba(35, 73, 188, 0.3)
+  );
+}
+
+.badge-text {
+    margin-left: 1rem;
+}

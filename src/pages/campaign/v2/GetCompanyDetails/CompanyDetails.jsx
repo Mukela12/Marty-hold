@@ -1,15 +1,15 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { ChevronLeft, Check, Palette, Zap } from 'lucide-react';
-import ProcessLayout from '../../../../components/process/ProcessLayout';
-import { FormInput, FormSelect } from '../../../../components/ui';
-import brandfetchService from '../../../../supabase/api/brandFetchService';
-import supabaseCompanyService from '../../../../supabase/api/companyService';
-import campaignService from '../../../../supabase/api/campaignService';
+import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
+import ProcessLayout from '../../../../components/process/ProcessLayout';
+import brandfetchService from '../../../../supabase/api/brandFetchService';
+import campaignService from '../../../../supabase/api/campaignService';
+import supabaseCompanyService from '../../../../supabase/api/companyService';
+import { motion } from 'framer-motion';
+import { FormInput } from '../../../../components/ui';
+import { ChevronLeft, Check, Palette, Zap, Badge, Sparkles, Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../../../supabase/integration/client';
-// import '../../../pages/onboarding/onboarding-step2-redesign.css';
+import "./companyDetails.css"
 
 const CampaignStep1 = () => {
   const navigate = useNavigate();
@@ -25,6 +25,7 @@ const CampaignStep1 = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isFetchingBrand, setIsFetchingBrand] = useState(false);
   const [brandPreview, setBrandPreview] = useState(null);
+  const [isFetching, setIsFetching] = useState(false);
 
   const totalSteps = 5;
 
@@ -73,7 +74,7 @@ const CampaignStep1 = () => {
   };
 
   const isFormValid = () => {
-    return formData.website && formData.businessCategory && isValidURL(formData.website);
+    return formData.website && isValidURL(formData.website);
   };
 
   const isValidURL = (url) => {
@@ -247,51 +248,68 @@ const CampaignStep1 = () => {
         <ChevronLeft size={18} />
         Back to Dashboard
       </motion.button>
-
-        <main className="animate-slide-up max-w-4xl mx-auto">
-            {/* Hero Section */}
-            <section className="text-center mb-12">
-                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-semibold mb-6">
-                    <Zap className="w-4 h-4" />
-                    Step 1 of 4 • Brand Setup
+      <main>
+        <section className="text-center mb-12">
+          <div className="inline-flex items-center gap-2 px-5 py-5s rounded-full p-2 bg-[#3b82f610] text-[#3b82f6] text-sm font-semibold mb-6">
+            <Zap className="w-4 h-4" />
+            Step 1 of 4 • Brand Setup
+          </div>
+          <h1 className="text-4xl md:text-5xl font-extrabold text-foreground mb-4 mt-2 tracking-tight m-4">
+            Let's identify your brand
+          </h1>
+          <div className='flex justify-center'>
+            <p className="text-lg text-muted-foreground max-w-2xl">
+              Enter your website URL and our AI will automatically fetch all your business information
+            </p>
+          </div>
+        </section>
+        <section className='m-8'>
+          <div className="relative overflow-hidden rounded-3xl border-2 border-[#cfc8f7] card-gradient p-8">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+            <div className="flex items-center badge-text gap-4 mb-6">
+              <div className="w-16 h-16 rounded-2xl gradient-primary flex items-center justify-center shadow-glow">
+                <Sparkles className="w-8 h-8 text-white" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="text-xl font-bold text-foreground">AI Brand Detection</h3>
+                  <span className="inline-flex items-center rounded-xl bg-gray-400/10 px-2 py-1 text-[0.6rem] font-bold text-[#29ba8c] inset-ring inset-ring-gray-400/20 p-1">
+                    Powered by Brand.dev
+                  </span>
                 </div>
-                <h1 className="text-4xl md:text-5xl font-extrabold text-foreground mb-4 tracking-tight">
-                    Let's identify your brand
-                </h1>
-                <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                    Enter your website URL and our AI will automatically fetch all your business information
-                </p>
-            </section>
-        </main>
-        <form className="onboarding-form" onSubmit={handleContinue}>
-          <FormInput
-            label="Business Website"
-            type="url"
-            id="website"
-            name="website"
-            placeholder="https://yourcompany.com"
-            value={formData.website}
-            onChange={handleChange}
-            required
-            disabled={isLoading}
-            error={formData.website && !isValidURL(formData.website) ? 'Please enter a valid URL' : ''}
-            helper="We'll use this to fetch your brand colors and logo"
-          />
-
-          <FormSelect
-            label="Business Category"
-            id="businessCategory"
-            name="businessCategory"
-            value={formData.businessCategory}
-            onChange={handleChange}
-            required
-            disabled={isLoading}
-            placeholder="Please select a category"
-            options={businessCategories.map(cat => ({ value: cat, label: cat }))}
-            helper="This helps us recommend appropriate templates"
-          />
-        </form>
-
+                <p className="text-muted-foreground">We'll automatically extract all your business info from your website</p>
+              </div>
+              <div>
+              </div>
+            </div>
+            <form className="m-4 w-full flex gap-2" onSubmit={handleContinue}>
+              <FormInput
+                type="url"
+                id="website"
+                name="website"
+                placeholder="https://yourcompany.com"
+                value={formData.website}
+                onChange={handleChange}
+                required
+                disabled={isLoading}
+                className='w-full'
+                error={formData.website && !isValidURL(formData.website) ? 'Please enter a valid URL' : ''}
+              />
+              <button className='btn text-white bg-[#bf92f0]' type='submit'>
+                Detect Brand
+              </button>
+            </form>
+            <div className="flex flex-wrap gap-4 mt-6">
+              {['Logo', 'Brand Colors', 'Business Name', 'Category', 'Phone', 'Address', 'Email'].map((item) => (
+                <div key={item} className="flex items-center gap-2 badge-text text-sm text-muted-foreground">
+                  <div className="w-2 h-2 rounded-full bg-[#9f8ff2]" />
+                  {item}
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      </main>
         {brandPreview && (
           <motion.div
             className="brand-preview-card"
