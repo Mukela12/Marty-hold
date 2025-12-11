@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ChevronLeft, Check, Palette, Zap } from 'lucide-react';
@@ -8,6 +8,7 @@ import brandfetchService from '../../../../supabase/api/brandFetchService';
 import supabaseCompanyService from '../../../../supabase/api/companyService';
 import campaignService from '../../../../supabase/api/campaignService';
 import toast from 'react-hot-toast';
+import { supabase } from '../../../../supabase/integration/client';
 // import '../../../pages/onboarding/onboarding-step2-redesign.css';
 
 const CampaignStep1 = () => {
@@ -16,6 +17,10 @@ const CampaignStep1 = () => {
     website: '',
     businessCategory: ''
   });
+
+  useEffect(()=>{
+    // brandDevApi()
+  }, [])
 
   const [isLoading, setIsLoading] = useState(false);
   const [isFetchingBrand, setIsFetchingBrand] = useState(false);
@@ -36,6 +41,25 @@ const CampaignStep1 = () => {
     'Non-Profit',
     'Other'
   ];
+
+  const brandDevApi=async()=>{
+    try {
+      console.log("insdie")
+      // const companyUrl = "https://impelox.com/";
+      const { data, error }=await supabase.functions.invoke("brand-dev",{
+        body: { companyUrl:"impelox.com" },
+      })
+
+      if (error) {
+        throw new Error("Supabase Error:", error);
+      }
+
+      console.log("data --->", data)
+    } catch (error) {
+      console.error("Unexpected Error:", err);
+    }
+    
+  }
 
   const handleChange = (e) => {
     setFormData({
