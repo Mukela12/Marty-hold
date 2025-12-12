@@ -6,10 +6,15 @@ import campaignService from '../../../../supabase/api/campaignService';
 import supabaseCompanyService from '../../../../supabase/api/companyService';
 import { motion } from 'framer-motion';
 import { FormInput } from '../../../../components/ui';
-import { ChevronLeft, Check, Palette, Zap, Badge, Sparkles, Loader2 } from 'lucide-react';
+import { ChevronLeft, Check, Palette, Zap, Badge, Sparkles, Loader2,Globe,Mail,Building2,Phone,MapPin, ExternalLink,Edit2,X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../../../supabase/integration/client';
 import "./companyDetails.css"
+import { useForm } from 'react-hook-form';
+import {brandDevMockData, businessCategories} from './GetCompanyUtils.js';
+
+
+
 
 const CampaignStep1 = () => {
   const navigate = useNavigate();
@@ -18,30 +23,46 @@ const CampaignStep1 = () => {
     businessCategory: ''
   });
 
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    reset,
+    watch,
+    setValue,
+    getValues,
+  } = useForm({
+    defaultValues: {
+      businessName:  '',
+      category:  '',
+      website: '',
+      address: '',
+      phone: '',
+      email:'',
+      brandColor:'#6366F1'
+    }
+  });
+
+   const formValues = watch();
+
   useEffect(()=>{
     // brandDevApi()
+    console.log("the  ---->",brandDevMockData)
   }, [])
 
   const [isLoading, setIsLoading] = useState(false);
   const [isFetchingBrand, setIsFetchingBrand] = useState(false);
   const [brandPreview, setBrandPreview] = useState(null);
+  const [fetchSuccess, setFetchSuccess] = useState(false);
+  const [business, setBusiness] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [brand, setBrand] = useState(null);
+  const [originalBrand, setOriginalBrand] = useState(null);
   const [isFetching, setIsFetching] = useState(false);
 
-  const totalSteps = 5;
 
-  const businessCategories = [
-    'Restaurant & Food Service',
-    'Retail & E-commerce',
-    'Real Estate',
-    'Home Services',
-    'Health & Wellness',
-    'Professional Services',
-    'Automotive',
-    'Education',
-    'Entertainment & Events',
-    'Non-Profit',
-    'Other'
-  ];
+  const totalSteps = 5;
 
   const brandDevApi=async()=>{
     try {
@@ -61,6 +82,71 @@ const CampaignStep1 = () => {
     }
     
   }
+
+  const handleFetchBrand = async () => {
+  if (!formData.website || !isValidURL(formData.website)) {
+    toast.error('Please enter a valid website URL');
+    return;
+  }
+
+  setIsFetching(true);
+  setFetchSuccess(false);
+
+  try {
+    toast.loading('Detecting brand information...', { id: 'brand-detect' });
+    const mockApiResponse = await new Promise((resolve) => {
+      setTimeout(() => {
+        resolve(brandDevMockData)
+      }, 1500);
+    });
+
+    if (mockApiResponse.status === "ok" && mockApiResponse.brand) {
+      const brandData = mockApiResponse.brand;
+      
+      const mappedData = {
+        name: brandData.title || brandData.domain.split('.')[0],
+        category: brandData.industries?.eic?.[0]?.subindustry || "Technology",
+        colors: {
+          primary: brandData.colors?.[0]?.hex || '#6366F1',
+          secondary: brandData.colors?.[1]?.hex || '#F1F5F9',
+          palette: brandData.colors || []
+        },
+        website: formData.website,
+        address: brandData.address ? 
+          `${brandData.address.city || ''}, ${brandData.address.country || ''}`.trim() : 
+          '123 Main Street, Kobe, Japan',
+        phone: "+81 78-123-4567",
+        email: `info@${brandData.domain}`,
+        logo: brandData.logos?.[0]?.url || null,
+        description: brandData.description || '',
+        slogan: brandData.slogan || '',
+        socialLinks: brandData.socials || [],
+        rawData: brandData
+      };
+      
+      setBrand(mappedData);
+      setOriginalBrand(mappedData);
+      
+      setValue('businessName', mappedData.name);
+      setValue('category', mappedData.category);
+      setValue('website', formData.website);
+      setValue('address', mappedData.address);
+      setValue('phone', mappedData.phone);
+      setValue('email', mappedData.email);
+      setValue('brandColor', mappedData.colors.primary);
+      
+      setFetchSuccess(true);
+      toast.success('Brand information detected successfully!', { id: 'brand-detect' });
+    } else {
+      throw new Error('Failed to detect brand');
+    }
+  } catch (error) {
+    console.error('Brand detection error:', error);
+    toast.error('Failed to detect brand. Please try again.', { id: 'brand-detect' });
+  } finally {
+    setIsFetching(false);
+  }
+};
 
   const handleChange = (e) => {
     setFormData({
@@ -86,146 +172,241 @@ const CampaignStep1 = () => {
     }
   };
 
-  const handleContinue = async (e) => {
-    e.preventDefault();
+  // const handleContinue = async (e) => {
+  //   e.preventDefault();
 
-    if (!isFormValid()) {
-      toast.error('Please fill in all required fields');
-      return;
-    }
+  //   if (!isFormValid()) {
+  //     toast.error('Please fill in all required fields');
+  //     return;
+  //   }
 
-    setIsLoading(true);
-    setIsFetchingBrand(true);
+  //   setIsLoading(true);
+  //   setIsFetchingBrand(true);
 
+  //   try {
+  //     // Fetch brand information
+  //     toast.loading('Fetching your brand information...', { id: 'brand-fetch' });
+
+  //     let brandData = null;
+  //     try {
+  //       brandData = await brandfetchService.fetchBrandInfo(formData.website);
+  //       toast.success('Brand information retrieved!', { id: 'brand-fetch' });
+
+  //       if (brandData) {
+  //         setBrandPreview({
+  //           name: brandData.name,
+  //           logo: brandData.logo?.primary || brandData.logo?.icon,
+  //           colors: brandData.colors
+  //         });
+  //       }
+  //     } catch (brandError) {
+  //       console.warn('Brandfetch error:', brandError);
+  //       toast.dismiss('brand-fetch');
+  //       toast.error('Could not fetch brand info, but you can continue with manual setup');
+  //     }
+
+  //     setIsFetchingBrand(false);
+
+  //     // Save brand data to Supabase if successfully fetched
+  //     if (brandData) {
+  //       try {
+  //         toast.loading('Saving brand information...', { id: 'save-brand' });
+
+  //         const companyDataToSave = {
+  //           name: brandData.name || 'Your Business',
+  //           website: formData.website,
+  //           domain: brandData.domain || formData.website,
+  //           businessCategory: formData.businessCategory,
+  //           description: brandData.description || null,
+  //           industry: brandData.industry || formData.businessCategory,
+
+  //           // Brand information
+  //           logo: {
+  //             primary: brandData.logo?.primary || null,
+  //             icon: brandData.logo?.icon || null
+  //           },
+  //           colors: {
+  //             primary: brandData.colors?.primary || null,
+  //             secondary: brandData.colors?.secondary || null,
+  //             palette: brandData.colors?.palette || []
+  //           },
+
+  //           // Fonts
+  //           fonts: brandData.fonts || null,
+
+  //           // Social links
+  //           socialLinks: brandData.socialLinks || null,
+
+  //           // Additional info
+  //           companyInfo: {
+  //             founded: brandData.companyInfo?.founded || null,
+  //             employees: brandData.companyInfo?.employees || null,
+  //             location: brandData.companyInfo?.location || null
+  //           },
+
+  //           // Store raw brandfetch data for reference
+  //           rawData: brandData
+  //         };
+
+  //         const companyResult = await supabaseCompanyService.saveCompanyInfo(companyDataToSave);
+  //         toast.success('Brand information saved!', { id: 'save-brand' });
+
+  //         // Create draft campaign immediately after company save
+  //         toast.loading('Creating campaign...', { id: 'create-campaign' });
+
+  //         const draftCampaign = await campaignService.createCampaign({
+  //           campaign_name: `${brandData.name || 'Business'} Campaign`,
+  //           company_id: companyResult.company.id,
+  //           status: 'draft',
+  //           payment_status: 'pending',
+  //           template_id: null,
+  //           template_name: null,
+  //           postcard_design_url: null,
+  //           postcard_preview_url: null
+  //         });
+
+  //         if (!draftCampaign || !draftCampaign.success || !draftCampaign.campaign || !draftCampaign.campaign.id) {
+  //           throw new Error('Failed to create campaign. Please try again.');
+  //         }
+
+  //         toast.success('Campaign created!', { id: 'create-campaign' });
+
+  //         // Store campaign data with campaign ID in localStorage
+  //         const campaignData = {
+  //           website: formData.website,
+  //           businessCategory: formData.businessCategory,
+  //           brandData: brandData,
+  //           companyId: companyResult.company.id,
+  //           campaignId: draftCampaign.campaign.id
+  //         };
+
+  //         localStorage.setItem('newCampaignData', JSON.stringify(campaignData));
+  //         localStorage.setItem('currentCampaignStep', '2');
+
+  //       } catch (saveError) {
+  //         console.warn('Failed to save brand info or create campaign:', saveError);
+  //         toast.error('Failed to save data. Please try again.', { id: 'save-brand' });
+  //         return; // Don't proceed if save failed
+  //       }
+  //     } else {
+  //       // No brand data, store minimal campaign data
+  //       const campaignData = {
+  //         website: formData.website,
+  //         businessCategory: formData.businessCategory,
+  //         brandData: null
+  //       };
+
+  //       localStorage.setItem('newCampaignData', JSON.stringify(campaignData));
+  //       localStorage.setItem('currentCampaignStep', '2');
+  //     }
+
+  //     // Navigate to next step
+  //     setTimeout(() => {
+  //       navigate('/campaign/step2');
+  //     }, 500);
+
+  //   } catch (error) {
+  //     console.error('Error:', error);
+  //     toast.error('An error occurred. Please try again.');
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // };
+
+
+  async function handleContinue(e) {
     try {
-      // Fetch brand information
-      toast.loading('Fetching your brand information...', { id: 'brand-fetch' });
-
-      let brandData = null;
-      try {
-        brandData = await brandfetchService.fetchBrandInfo(formData.website);
-        toast.success('Brand information retrieved!', { id: 'brand-fetch' });
-
-        if (brandData) {
-          setBrandPreview({
-            name: brandData.name,
-            logo: brandData.logo?.primary || brandData.logo?.icon,
-            colors: brandData.colors
-          });
-        }
-      } catch (brandError) {
-        console.warn('Brandfetch error:', brandError);
-        toast.dismiss('brand-fetch');
-        toast.error('Could not fetch brand info, but you can continue with manual setup');
-      }
-
-      setIsFetchingBrand(false);
-
-      // Save brand data to Supabase if successfully fetched
-      if (brandData) {
-        try {
-          toast.loading('Saving brand information...', { id: 'save-brand' });
-
-          const companyDataToSave = {
-            name: brandData.name || 'Your Business',
-            website: formData.website,
-            domain: brandData.domain || formData.website,
-            businessCategory: formData.businessCategory,
-            description: brandData.description || null,
-            industry: brandData.industry || formData.businessCategory,
-
-            // Brand information
-            logo: {
-              primary: brandData.logo?.primary || null,
-              icon: brandData.logo?.icon || null
-            },
-            colors: {
-              primary: brandData.colors?.primary || null,
-              secondary: brandData.colors?.secondary || null,
-              palette: brandData.colors?.palette || []
-            },
-
-            // Fonts
-            fonts: brandData.fonts || null,
-
-            // Social links
-            socialLinks: brandData.socialLinks || null,
-
-            // Additional info
-            companyInfo: {
-              founded: brandData.companyInfo?.founded || null,
-              employees: brandData.companyInfo?.employees || null,
-              location: brandData.companyInfo?.location || null
-            },
-
-            // Store raw brandfetch data for reference
-            rawData: brandData
-          };
-
-          const companyResult = await supabaseCompanyService.saveCompanyInfo(companyDataToSave);
-          toast.success('Brand information saved!', { id: 'save-brand' });
-
-          // Create draft campaign immediately after company save
-          toast.loading('Creating campaign...', { id: 'create-campaign' });
-
-          const draftCampaign = await campaignService.createCampaign({
-            campaign_name: `${brandData.name || 'Business'} Campaign`,
-            company_id: companyResult.company.id,
-            status: 'draft',
-            payment_status: 'pending',
-            template_id: null,
-            template_name: null,
-            postcard_design_url: null,
-            postcard_preview_url: null
-          });
-
-          if (!draftCampaign || !draftCampaign.success || !draftCampaign.campaign || !draftCampaign.campaign.id) {
-            throw new Error('Failed to create campaign. Please try again.');
-          }
-
-          toast.success('Campaign created!', { id: 'create-campaign' });
-
-          // Store campaign data with campaign ID in localStorage
-          const campaignData = {
-            website: formData.website,
-            businessCategory: formData.businessCategory,
-            brandData: brandData,
-            companyId: companyResult.company.id,
-            campaignId: draftCampaign.campaign.id
-          };
-
-          localStorage.setItem('newCampaignData', JSON.stringify(campaignData));
-          localStorage.setItem('currentCampaignStep', '2');
-
-        } catch (saveError) {
-          console.warn('Failed to save brand info or create campaign:', saveError);
-          toast.error('Failed to save data. Please try again.', { id: 'save-brand' });
-          return; // Don't proceed if save failed
-        }
-      } else {
-        // No brand data, store minimal campaign data
-        const campaignData = {
-          website: formData.website,
-          businessCategory: formData.businessCategory,
-          brandData: null
-        };
-
-        localStorage.setItem('newCampaignData', JSON.stringify(campaignData));
-        localStorage.setItem('currentCampaignStep', '2');
-      }
-
-      // Navigate to next step
-      setTimeout(() => {
-        navigate('/campaign/step2');
-      }, 500);
-
+      e.preventDefault();
+      const formValues =  getValues();
+      console.log("hello --->",formValues)
+      navigate('/campaign/step2')
     } catch (error) {
-      console.error('Error:', error);
-      toast.error('An error occurred. Please try again.');
-    } finally {
-      setIsLoading(false);
+      
+    }
+  }
+
+  // const brandDetect = (e) => {
+//   e.preventDefault();
+
+//   const mock = {
+//     name: "Brew & Bean Coffee",
+//     category: "Coffee Shop",
+//     colors: {
+//       primary: "#6366F1",
+//       secondary: "#F1F5F9"
+//     },
+//     website: formData.website,
+//     address: "123 Main Street, Columbus, OH 43201",
+//     phone: "(614) 555-0123",
+//     email: "hello@brewandbean.com"
+//   };
+
+//   setBrand(mock);
+//   setOriginalBrand(mock);
+  
+//   reset({
+//     businessName: mock.name,
+//     category: mock.category,
+//     website: formData.website || mock.website,
+//     address: mock.address,
+//     phone: mock.phone,
+//     email: mock.email,
+//     brandColor: mock.colors?.primary || '#6366F1'
+//   });
+  
+//   setFetchSuccess(true);
+// };
+
+const handleCancelEdit = () => {
+  if (originalBrand) {
+    reset({
+      businessName: originalBrand.name || '',
+      category: originalBrand.category || '',
+      website: formData.website || originalBrand.website || '',
+      address: originalBrand.address || '',
+      phone: originalBrand.phone || '',
+      email: originalBrand.email || '',
+      brandColor: originalBrand.colors?.primary || '#6366F1'
+    });
+    setBrand(originalBrand);
+  } else if (brand) {
+    reset({
+      businessName: brand.name || '',
+      category: brand.category || '',
+      website: formData.website || brand.website || '',
+      address: brand.address || '',
+      phone: brand.phone || '',
+      email: brand.email || '',
+      brandColor: brand.colors?.primary || '#6366F1'
+    });
+  }
+  setIsEditing(false);
+};
+
+const onSubmit = (data) => {
+  // Create or update the brand state with form data
+  const updatedBrand = {
+    ...(brand || {}),
+    name: data.businessName,
+    category: data.category,
+    website: data.website,
+    address: data.address,
+    phone: data.phone,
+    email: data.email,
+    colors: {
+      ...(brand?.colors || {}),
+      primary: data.brandColor
     }
   };
+  
+  setBrand(updatedBrand);
+  setFormData(prev => ({ ...prev, website: data.website }));
+  setIsEditing(false);
+};
+
+  const watchedBrandColor = watch('brandColor');
+  
+  
 
   return (
     <ProcessLayout
@@ -282,7 +463,7 @@ const CampaignStep1 = () => {
               <div>
               </div>
             </div>
-            <form className="m-4 w-full flex gap-2" onSubmit={handleContinue}>
+            {/* <form className="m-4 w-full flex gap-2" onSubmit={brandDetect}>
               <FormInput
                 type="url"
                 id="website"
@@ -298,7 +479,47 @@ const CampaignStep1 = () => {
               <button className='btn text-white bg-[#bf92f0]' type='submit'>
                 Detect Brand
               </button>
-            </form>
+            </form> */}
+            <div className="m-4 w-full flex gap-2">
+              <FormInput
+                type="url"
+                id="website"
+                name="website"
+                placeholder="https://yourcompany.com"
+                value={formData.website}
+                onChange={handleChange}
+                required
+                disabled={isLoading || isFetching|| fetchSuccess}
+                className='w-full'
+                error={formData.website && !isValidURL(formData.website) ? 'Please enter a valid URL' : ''}
+              />
+              <button
+                onClick={handleFetchBrand}
+                disabled={!formData.website || isFetching}
+                className={`btn text-white flex items-center justify-center min-w-[180px] ${
+                  fetchSuccess 
+                    ? "bg-green-500 hover:bg-green-600" 
+                    : "bg-[#bf92f0]"
+                } disabled:opacity-50 disabled:cursor-not-allowed h-14 px-8 rounded-xl text-base font-bold gap-3`}
+              >
+                {isFetching ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                    Detecting...
+                  </>
+                ) : fetchSuccess ? (
+                  <>
+                    <Check className="w-5 h-5 mr-2" />
+                    Brand Found!
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-5 h-5 mr-2" />
+                    Detect Brand
+                  </>
+                )}
+              </button>
+            </div>
             <div className="flex flex-wrap gap-4 mt-6">
               {['Logo', 'Brand Colors', 'Business Name', 'Category', 'Phone', 'Address', 'Email'].map((item) => (
                 <div key={item} className="flex items-center gap-2 badge-text text-sm text-muted-foreground">
@@ -310,7 +531,7 @@ const CampaignStep1 = () => {
           </div>
         </section>
       </main>
-        {brandPreview && (
+        {/* {brandPreview && (
           <motion.div
             className="brand-preview-card"
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
@@ -413,7 +634,350 @@ const CampaignStep1 = () => {
               <strong>Next:</strong> These colors will be automatically applied to your postcard template!
             </div>
           </motion.div>
-        )}
+        )} */}
+
+      {fetchSuccess && brand && (
+        <motion.div
+          className="animate-scale-in space-y-6 mt-8"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+        >
+          {/* Brand Preview Card - Wrap in form */}
+          <form onSubmit={handleSubmit(onSubmit)}>
+            <div className="relative overflow-hidden rounded-3xl border-2 border-[#cfc8f7] bg-gradient-to-br from-white to-[#faf9ff] p-8 card-shadow">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+              
+              <div className="absolute top-4 right-4 flex gap-2 z-10">
+                <div className="inline-flex items-center gap-1 rounded-full bg-[#29ba8c]/10 px-5 py-3.5 text-xs font-semibold text-[#29ba8c] border border-[#29ba8c]/20">
+                  <Check className="w-3 h-3" />
+                  All Data Auto-Detected
+                </div>
+                <div className="flex gap-2">
+                  {isEditing && (
+                    <button 
+                      type="button"
+                      className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-medium text-[#ef4444] border border-[#fecaca] hover:bg-[#fef2f2] transition-colors"
+                      onClick={handleCancelEdit}
+                    >
+                      <X className="w-3.5 h-3.5" />
+                      Cancel
+                    </button>
+                  )}
+                  {isEditing ? (
+                    <button 
+                      type="submit"
+                      className="inline-flex items-center gap-1.5 rounded-full bg-[#6366F1] px-3 py-1.5 text-xs font-medium text-white border border-[#6366F1] hover:bg-[#4f46e5] transition-colors"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      Done
+                    </button>
+                  ) : (
+                    <button 
+                      type="button"
+                      className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-medium text-[#6366F1] border border-[#cfc8f7] hover:bg-[#f7f6ff] transition-colors"
+                      onClick={(e) => {e.preventDefault(),setIsEditing(!isEditing)}}
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                      Edit
+                    </button>
+                  )}
+                </div>
+              </div>
+              
+              <h4 className="text-xl font-bold text-foreground mb-6 text-[#1f2937]">Your Brand</h4>
+              
+              {/* Brand Visual Preview */}
+              <div className="flex items-center gap-6 mb-5 mt-2.5 p-6 rounded-2xl bg-gradient-to-br from-[#f0eeff] to-white border border-[#e5e7eb]">
+                <div 
+                  className="w-20 h-20 rounded-2xl flex items-center justify-center text-white font-bold text-3xl shadow-lg shrink-0"
+                  style={{ backgroundColor: isEditing ? watchedBrandColor : (brand?.colors?.primary || '#6366F1') }}
+                >
+                  {(isEditing ? watch('businessName') : brand?.name || '').charAt(0).toUpperCase() || 'B'}
+                </div>
+                <div className="flex-1">
+                  {isEditing ? (
+                    <>
+                      <input 
+                        {...register('businessName', { 
+                          required: 'Business name is required',
+                          minLength: { value: 2, message: 'Business name must be at least 2 characters' }
+                        })}
+                        type="text"
+                        className="w-full text-2xl font-bold text-[#1f2937] mb-1 bg-transparent border-none focus:outline-none focus:ring-0 p-0"
+                      />
+                      {errors.businessName && (
+                        <p className="text-xs text-red-500 mt-1">{errors.businessName.message}</p>
+                      )}
+                    </>
+                  ) : (
+                    <h3 className="font-bold text-2xl text-[#1f2937] mb-1">
+                      {brand?.name || 'Your Business'}
+                    </h3>
+                  )}
+                  <p className="text-[#6b7280]">
+                    {isEditing ? watch('category') || 'Category' : brand?.category || 'Coffee Shop'}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <div 
+                    className="w-10 h-10 rounded-xl border-2 border-white shadow-sm"
+                    style={{ backgroundColor: isEditing ? watchedBrandColor : (brand?.colors?.primary || '#6366F1') }}
+                    title="Primary Color"
+                  />
+                  <div 
+                    className="w-10 h-10 rounded-xl border-2 border-[#e5e7eb] shadow-sm"
+                    style={{ backgroundColor: brand?.colors?.secondary || '#F1F5F9' }}
+                    title="Secondary Color"
+                  />
+                </div>
+              </div>
+
+              {/* Detected Info Grid with react-hook-form */}
+              <div className="grid md:grid-cols-2 gap-4">
+                {/* Business Name */}
+                <div 
+                  className={`flex items-center gap-4 p-4 rounded-xl transition-all ${isEditing ? "bg-[#f0eeff] border-2 border-dashed border-[#cfc8f7]" : "bg-[#f9fafb] border border-[#e5e7eb]"}`}
+                >
+                  <div className="w-10 h-10 rounded-xl bg-[#6366F1]/10 flex items-center justify-center shrink-0">
+                    <Edit2 className="w-5 h-5 text-[#6366F1]" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-[#6b7280] font-medium mb-0.5">Business Name</p>
+                    {isEditing ? (
+                      <>
+                        <input 
+                          {...register('businessName', { 
+                            required: 'Business name is required',
+                            minLength: { value: 2, message: 'Business name must be at least 2 characters' }
+                          })}
+                          type="text"
+                          className="w-full h-8 px-2 text-sm rounded-md border border-[#d1d5db] focus:outline-none focus:ring-2 focus:ring-[#6366F1] focus:border-transparent"
+                        />
+                        {errors.businessName && (
+                          <p className="text-xs text-red-500 mt-1">{errors.businessName.message}</p>
+                        )}
+                      </>
+                    ) : (
+                      <p className="text-sm font-medium text-[#1f2937] truncate">
+                        {brand?.name || '—'}
+                      </p>
+                    )}
+                  </div>
+                  {!isEditing && brand?.name && (
+                    <Check className="w-4 h-4 text-[#29ba8c] shrink-0" />
+                  )}
+                </div>
+
+                {/* Category */}
+                <div 
+                  className={`flex items-center gap-4 p-4 rounded-xl transition-all ${isEditing ? "bg-[#f0eeff] border-2 border-dashed border-[#cfc8f7]" : "bg-[#f9fafb] border border-[#e5e7eb]"}`}
+                >
+                  <div className="w-10 h-10 rounded-xl bg-[#6366F1]/10 flex items-center justify-center shrink-0">
+                    <Building2 className="w-5 h-5 text-[#6366F1]" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-[#6b7280] font-medium mb-0.5">Category</p>
+                    {isEditing ? (
+                      <>
+                        <select
+                          {...register('category', { required: 'Category is required' })}
+                          className="w-full h-8 px-2 text-sm rounded-md border border-[#d1d5db] bg-white focus:outline-none focus:ring-2 focus:ring-[#6366F1] focus:border-transparent"
+                        >
+                          <option value="">Select your category</option>
+                          {businessCategories.map((category) => (
+                            <option key={category} value={category}>
+                              {category}
+                            </option>
+                          ))}
+                        </select>
+                        {errors.category && (
+                          <p className="text-xs text-red-500 mt-1">{errors.category.message}</p>
+                        )}
+                      </>
+                    ) : (
+                      <p className="text-sm font-medium text-[#1f2937] truncate">
+                        {brand?.category || '—'}
+                      </p>
+                    )}
+                  </div>
+                  {!isEditing && brand?.category && (
+                    <Check className="w-4 h-4 text-[#29ba8c] shrink-0" />
+                  )}
+                </div>
+
+
+                {/* Website */}
+                <div 
+                  className={`flex items-center gap-4 p-4 rounded-xl transition-all ${isEditing ? "bg-[#f0eeff] border-2 border-dashed border-[#cfc8f7]" : "bg-[#f9fafb] border border-[#e5e7eb]"}`}
+                >
+                  <div className="w-10 h-10 rounded-xl bg-[#6366F1]/10 flex items-center justify-center shrink-0">
+                    <Globe className="w-5 h-5 text-[#6366F1]" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-[#6b7280] font-medium mb-0.5">Website</p>
+                      <p className="text-sm font-medium text-[#1f2937] truncate">
+                        <a href={brand?.website} target="_blank" rel="noopener noreferrer" className="text-[#6366F1] hover:underline inline-flex items-center gap-1">
+                          {brand?.website || '—'} {brand?.website && <ExternalLink className="w-3 h-3" />}
+                        </a>
+                      </p>
+                  </div>
+                  {!isEditing && brand?.website && (
+                    <Check className="w-4 h-4 text-[#29ba8c] shrink-0" />
+                  )}
+                </div>
+
+                {/* Address */}
+                <div 
+                  className={`flex items-center gap-4 p-4 rounded-xl transition-all ${isEditing ? "bg-[#f0eeff] border-2 border-dashed border-[#cfc8f7]" : "bg-[#f9fafb] border border-[#e5e7eb]"}`}
+                >
+                  <div className="w-10 h-10 rounded-xl bg-[#6366F1]/10 flex items-center justify-center shrink-0">
+                    <MapPin className="w-5 h-5 text-[#6366F1]" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-[#6b7280] font-medium mb-0.5">Address</p>
+                    {isEditing ? (
+                      <>
+                        <input 
+                          {...register('address')}
+                          type="text"
+                          className="w-full h-8 px-2 text-sm rounded-md border border-[#d1d5db] focus:outline-none focus:ring-2 focus:ring-[#6366F1] focus:border-transparent"
+                        />
+                      </>
+                    ) : (
+                      <p className="text-sm font-medium text-[#1f2937] truncate">
+                        {brand?.address || '—'}
+                      </p>
+                    )}
+                  </div>
+                  {!isEditing && brand?.address && (
+                    <Check className="w-4 h-4 text-[#29ba8c] shrink-0" />
+                  )}
+                </div>
+
+                {/* Phone */}
+                <div 
+                  className={`flex items-center gap-4 p-4 rounded-xl transition-all ${isEditing ? "bg-[#f0eeff] border-2 border-dashed border-[#cfc8f7]" : "bg-[#f9fafb] border border-[#e5e7eb]"}`}
+                >
+                  <div className="w-10 h-10 rounded-xl bg-[#6366F1]/10 flex items-center justify-center shrink-0">
+                    <Phone className="w-5 h-5 text-[#6366F1]" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-[#6b7280] font-medium mb-0.5">Phone</p>
+                    {isEditing ? (
+                      <>
+                        <input 
+                          {...register('phone', {
+                            pattern: {
+                              value: /^[+]?[(]?[0-9]{1,4}[)]?[-\s./0-9]*$/,
+                              message: 'Please enter a valid phone number'
+                            }
+                          })}
+                          type="tel"
+                          className="w-full h-8 px-2 text-sm rounded-md border border-[#d1d5db] focus:outline-none focus:ring-2 focus:ring-[#6366F1] focus:border-transparent"
+                        />
+                        {errors.phone && (
+                          <p className="text-xs text-red-500 mt-1">{errors.phone.message}</p>
+                        )}
+                      </>
+                    ) : (
+                      <p className="text-sm font-medium text-[#1f2937] truncate">
+                        {brand?.phone || '—'}
+                      </p>
+                    )}
+                  </div>
+                  {!isEditing && brand?.phone && (
+                    <Check className="w-4 h-4 text-[#29ba8c] shrink-0" />
+                  )}
+                </div>
+
+                {/* Email */}
+                <div 
+                  className={`flex items-center gap-4 p-4 rounded-xl transition-all ${isEditing ? "bg-[#f0eeff] border-2 border-dashed border-[#cfc8f7]" : "bg-[#f9fafb] border border-[#e5e7eb]"}`}
+                >
+                  <div className="w-10 h-10 rounded-xl bg-[#6366F1]/10 flex items-center justify-center shrink-0">
+                    <Mail className="w-5 h-5 text-[#6366F1]" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-[#6b7280] font-medium mb-0.5">Email</p>
+                    {isEditing ? (
+                      <>
+                        <input 
+                          {...register('email', {
+                            pattern: {
+                              value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                              message: 'Please enter a valid email address'
+                            }
+                          })}
+                          type="email"
+                          className="w-full h-8 px-2 text-sm rounded-md border border-[#d1d5db] focus:outline-none focus:ring-2 focus:ring-[#6366F1] focus:border-transparent"
+                        />
+                        {errors.email && (
+                          <p className="text-xs text-red-500 mt-1">{errors.email.message}</p>
+                        )}
+                      </>
+                    ) : (
+                      <p className="text-sm font-medium text-[#1f2937] truncate">
+                        {brand?.email || '—'}
+                      </p>
+                    )}
+                  </div>
+                  {!isEditing && brand?.email && (
+                    <Check className="w-4 h-4 text-[#29ba8c] shrink-0" />
+                  )}
+                </div>
+
+                {/* Brand Colors */}
+                <div 
+                  className={`flex items-center gap-4 p-4 rounded-xl transition-all ${isEditing ? "bg-[#f0eeff] border-2 border-dashed border-[#cfc8f7]" : "bg-[#f9fafb] border border-[#e5e7eb]"}`}
+                >
+                  <div className="w-10 h-10 rounded-xl bg-[#6366F1]/10 flex items-center justify-center shrink-0">
+                    <Palette className="w-5 h-5 text-[#6366F1]" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-[#6b7280] font-medium mb-0.5">Brand Colors</p>
+                    <div className="flex items-center gap-2">
+                      {isEditing ? (
+                        <>
+                          <input
+                            {...register('brandColor')}
+                            type="color"
+                            className="w-8 h-8 rounded cursor-pointer border border-[#d1d5db]"
+                          />
+                          <span className="text-sm font-mono text-[#1f2937]">
+                            {watchedBrandColor || '#6366F1'}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <div 
+                            className="w-6 h-6 rounded-md border border-[#e5e7eb]"
+                            style={{ backgroundColor: brand?.colors?.primary || '#6366F1' }}
+                          />
+                          <span className="text-sm font-mono text-[#1f2937]">
+                            {brand?.colors?.primary || '#6366F1'}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  {!isEditing && brand?.colors?.primary && (
+                    <Check className="w-4 h-4 text-[#29ba8c] shrink-0" />
+                  )}
+                </div>
+              </div>
+            </div>
+          </form>
+
+          {/* Info Banner with Sparkles icon - Fixed spacing */}
+          <div className="flex items-center gap-4 p-4 rounded-xl bg-[#6366F1]/5 border border-[#6366F1]/20 mt-8">
+            <Sparkles className="w-5 h-5 text-[#6366F1] shrink-0" />
+            <p className="text-sm text-[#6b7280]">
+              <span className="font-semibold text-[#1f2937]">All information auto-detected!</span> Click Edit above if you need to make any adjustments before continuing.
+            </p>
+          </div>
+        </motion.div>
+      )}
     </ProcessLayout>
   );
 };
