@@ -37,6 +37,7 @@ import './App.css'
 
 /* campaign-V2 Step1 */
 import CompanyDetails from './pages/campaign/v2/GetCompanyDetails/CompanyDetails'
+import SelectTemplates from './pages/campaign/v2/selectTemplates/SelectTemplates'
 
 function App() {
   return (
@@ -116,7 +117,7 @@ function App() {
           path="/campaign/step2"
           element={
             <ProtectedRoute requireEmailVerification requireOnboarding>
-              <CampaignStep2 />
+              <SelectTemplates />
             </ProtectedRoute>
           }
         />

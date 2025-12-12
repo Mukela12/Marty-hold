@@ -39,7 +39,7 @@ const Sidebar = () => {
       {/* Logo Section */}
       <div className="sidebar-header">
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-primary-400 to-primary-600 rounded-xl flex items-center justify-center shadow-lg">
+          <div className="w-10 h-10 bg-linear-to-br from-primary-400 to-primary-600 rounded-xl flex items-center justify-center shadow-lg">
             <span className="text-white font-bold text-sm">MP</span>
           </div>
           <div>
