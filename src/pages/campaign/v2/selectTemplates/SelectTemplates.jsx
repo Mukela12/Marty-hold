@@ -1,16 +1,42 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import ProcessLayout from '../../../../components/process/ProcessLayout';
-import { Layout, Wand2, Check } from "lucide-react";
-import "./selectTemplate.css";
 import PreviewCards from '../../../../components/campaign/PreviewCards';
 import {useBrandDev} from '../../../../contexts/BrandDevContext.jsx'
+import { Layout, Wand2, Check } from "lucide-react";
+import { supabase } from '../../../../supabase/integration/client';
+import "./selectTemplate.css";
 
 const SelectTemplates = () => {
     /* templates */
-    const [templates, setTemplates] = useState([]);
-
     const totalSteps = 5;
     const categoryLabel = "IT SECTOR";
+    const [templates, setTemplates] = useState([]);
+    const [selectedTemplate, setSelectedTemplate] = useState(null);
+
+    useEffect(() => {
+      getTemplates();
+    }, [])
+
+    /* Get templates from the supabase */
+    const getTemplates = async () => {
+      try {
+        const { data, error } = await supabase
+        .from("master_campaign")
+        .select("*");
+        
+        setTemplates(data);        
+      } catch (error) {
+        console.error(error?.stack)
+      };
+    };
+
+    const handleTemplateSelect = (template, index) => {
+      try {
+        setSelectedTemplate(index)
+      } catch (error) {
+        console.error(error);
+      };
+    };
 
     const {
       mappedData: brand,     
@@ -39,18 +65,18 @@ const SelectTemplates = () => {
                             <Layout className="w-4 h-4" />
                             Step 2 of 4 • Template Selection
                         </div>
-                        <h1 className="text-4xl md:text-5xl m-6 font-extrabold text-foreground tracking-tight">
+                        <h1 className="text-4xl md:text-5xl m-6 font-black text-foreground tracking-tight">
                             Choose your postcard design
                         </h1>
                         <div className='flex justify-center'>
-                            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+                            <p className="text-lg text-[#b5b0c3] max-w-2xl mx-auto">
                                 AI-curated designs for <span className="font-semibold text-[#4928ed]">{categoryLabel}</span> based on your brand
                             </p>
                         </div>
                     </section>
 
                     {/* AI Banner */}
-                    <div className="mb-8 p-4 rounded-2xl primary-gradient border border-[#c2b8f5]">
+                    <div className="p-4 rounded-2xl primary-gradient border border-[#c2b8f5]">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shadow-glow-sm">
                           <Wand2 className="w-5 h-5 text-white" />
@@ -59,7 +85,7 @@ const SelectTemplates = () => {
                           <h2 className="font-bold text-foreground">
                             {1} designs curated for {categoryLabel}
                           </h2>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-sm text-[#b5b0c3]">
                             Matching your brand colors and {categoryLabel.toLowerCase()} category
                           </p>
                         </div>
@@ -68,15 +94,13 @@ const SelectTemplates = () => {
 
                     {/* Cards */}
                     <div className="grid post-card grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-9">
-                      <PreviewCards />
-                      <PreviewCards />
-                      <PreviewCards />
-                      <PreviewCards />
-                      <PreviewCards />
+                      {templates.map((template, ind) => (
+                        <PreviewCards key={ind} src={template} />
+                      ))}
                     </div>
 
                     {/* After Selection */}
-                    <div className="p-4 selected after-select rounded-2xl bg-[#e3f2ee] border border-[#c4e8df] animate-scale-in">
+                    {/* <div className="p-4 selected after-select rounded-2xl bg-[#e3f2ee] border border-[#c4e8df] animate-scale-in">
                       <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-xl bg-[#bbe6d9] flex items-center justify-center">
                           <Check className="w-6 h-6 text-[#23b987]" />
@@ -86,7 +110,7 @@ const SelectTemplates = () => {
                           <p className="text-sm text-muted-foreground">Click Continue to customize this design with AI</p>
                         </div>
                       </div>
-                    </div>
+                    </div> */}
                 </ProcessLayout>  
             </main>
         </React.Fragment>

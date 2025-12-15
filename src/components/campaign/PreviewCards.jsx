@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { cn } from '../../utils/cn';
 import { Star, Zap } from "lucide-react";
 
-const PreviewCards = ({ className, size = "medium" }) => {
+const PreviewCards = ({ className, size = "medium", src }) => {
     const [ isHover, setIsHover ] = useState(false);
     const sizeClasses = {
         small: 'max-w-sm',
@@ -17,22 +17,28 @@ const PreviewCards = ({ className, size = "medium" }) => {
 
             {/* Card First Half Image */}
             <section className="relative card-elevated overflow-hidden">
-                <div className="relative overflow-hidden aspect-16/10">
-                    <section className="relative card-elevated overflow-hidden rounded-t-4xl">
-                        <img
-                            src="https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=600&h=400&fit=crop"
-                            alt="Postcard"
-                            className="w-full h-full object-cover"
-                        />
-                        <span className="absolute inset-0 bg-linear-to-t from-black/30 to-transparent" />
-                    </section>
+              <div className="relative overflow-hidden aspect-16/10 flex items-center justify-center">
+                {/* Scaled wrapper */}
+                <div className="origin-center scale-[0.6]">
+                  {src?.html && (
+                    <iframe
+                      srcDoc={src.html}
+                      className="w-[600px] h-[408px] border-0 block rounded-t-[4rem]"
+                    />
+                  )}
                 </div>
-                <div className='absolute top-1/19 left-75'>
-                    <span className="gradient-primary inline-flex p-1 rounded-2xl text-white border-0 gap-1 text-[8px]">
-                        <Star className="w-3 h-3 text-white" />
-                        Best Match
-                    </span>
-                </div>
+                
+                {/* Overlay */}
+                <span className="pointer-events-none absolute inset-0 bg-linear-to-t from-black/30 to-transparent" />
+              </div>
+                
+              {/* Badge */}
+              <div className="absolute top-4 right-4">
+                <span className="gradient-primary inline-flex items-center gap-1 p-1 rounded-2xl text-white text-[8px]">
+                  <Star className="w-3 h-3" />
+                  Best Match
+                </span>
+              </div>
             </section>
 
             {isHover &&

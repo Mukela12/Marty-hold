@@ -347,7 +347,7 @@ const handleToggleEdit = (e) => {
               <button
                 onClick={handleFetchBrand}
                 disabled={!formData.website || localIsFetching}
-                className={`btn text-white flex items-center justify-center min-w-[180px] ${
+                className={`btn text-white flex items-center justify-center h-[2.5rem] min-w-[180px] ${
                   fetchSuccess 
                     ? "bg-green-500 hover:bg-green-600" 
                     : "bg-[#bf92f0]"
@@ -365,7 +365,7 @@ const handleToggleEdit = (e) => {
                   </>
                 ) : (
                   <>
-                    <Sparkles className="w-5 h-5 mr-2" />
+                    <Sparkles className="text-7xl" />
                     Detect Brand
                   </>
                 )}
@@ -496,11 +496,13 @@ const handleToggleEdit = (e) => {
         >
           {/* Brand Preview Card - Wrap in form */}
           <form onSubmit={handleSubmit(onSubmit)}>
-            <div className="relative overflow-hidden rounded-3xl border-2 border-[#cfc8f7] bg-gradient-to-br from-white to-[#faf9ff] p-8 card-shadow">
+            <div className="relative overflow-hidden rounded-3xl border-2 border-[#cfc8f7] bg-linear-to-br from-white to-[#faf9ff] p-8 card-shadow">
               <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
               
               <div className="absolute top-4 right-4 flex gap-2 z-10">
-                <div className="inline-flex items-center gap-1 rounded-full bg-[#29ba8c]/10 px-5 py-3.5 text-xs font-semibold text-[#29ba8c] border border-[#29ba8c]/20">
+                <div 
+                style={{ padding: "5px 19px" }}
+                className="inline-flex items-center gap-1 rounded-full cursor-pointer bg-[#29ba8c]/10 px-5 py-3.5 text-[0.8rem] font-semibold text-[#29ba8c] border border-[#29ba8c]/20">
                   <Check className="w-3 h-3" />
                   All Data Auto-Detected
                 </div>
@@ -526,7 +528,8 @@ const handleToggleEdit = (e) => {
                   ) : (
                     <button 
                       type="button"
-                      className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-medium text-[#6366F1] border border-[#cfc8f7] hover:bg-[#f7f6ff] transition-colors"
+                      style={{ padding: "5px 19px" }}
+                      className="inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-medium text-[#6366F1] hover:bg-[#f7f6ff] transition-colors"
                       onClick={handleToggleEdit}
                     >
                       <Edit2 className="w-3.5 h-3.5" />
@@ -536,10 +539,12 @@ const handleToggleEdit = (e) => {
                 </div>
               </div>
               
-              <h4 className="text-xl font-bold text-foreground mb-6 text-[#1f2937]">Your Brand</h4>
+              <h4 className="text-xl font-bold text-foreground text-[#1f2937]">Your Brand</h4>
               
               {/* Brand Visual Preview */}
-              <div className="flex items-center gap-6 mb-5 mt-2.5 p-6 rounded-2xl bg-gradient-to-br from-[#f0eeff] to-white border border-[#e5e7eb]">
+              <div 
+              style={{ margin: "20px 0" }}
+              className="flex items-center gap-6 mb-5 mt-2.5 p-6 rounded-2xl bg-linear-to-br from-[#f0eeff] to-white border border-[#e5e7eb]">
                 <div 
                   className="w-20 h-20 rounded-2xl flex items-center justify-center text-white font-bold text-3xl shadow-lg shrink-0"
                   style={{ backgroundColor: isEditing ? watchedBrandColor : (brand?.colors?.primary || '#6366F1') }}
@@ -821,7 +826,7 @@ const handleToggleEdit = (e) => {
           </form>
 
           {/* Info Banner with Sparkles icon - Fixed spacing */}
-          <div className="flex items-center gap-4 p-4 rounded-xl bg-[#6366F1]/5 border border-[#6366F1]/20 mt-8">
+          <div className="flex items-center gap-4 p-4 rounded-xl bg-[#6366F1]/5 border border-[#6366F1]/20s" style={{ marginTop: "20px" }}>
             <Sparkles className="w-5 h-5 text-[#6366F1] shrink-0" />
             <p className="text-sm text-[#6b7280]">
               <span className="font-semibold text-[#1f2937]">All information auto-detected!</span> Click Edit above if you need to make any adjustments before continuing.
