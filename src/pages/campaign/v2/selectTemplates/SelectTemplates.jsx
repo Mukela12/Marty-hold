@@ -3,6 +3,7 @@ import ProcessLayout from '../../../../components/process/ProcessLayout';
 import { Layout, Wand2, Check } from "lucide-react";
 import "./selectTemplate.css";
 import PreviewCards from '../../../../components/campaign/PreviewCards';
+import {useBrandDev} from '../../../../contexts/BrandDevContext.jsx'
 
 const SelectTemplates = () => {
     /* templates */
@@ -10,6 +11,14 @@ const SelectTemplates = () => {
 
     const totalSteps = 5;
     const categoryLabel = "IT SECTOR";
+
+    const {
+      mappedData: brand,     
+      apiResponse,           
+    } = useBrandDev();
+  
+    console.log("mapped data ---->", brand);
+    console.log("apiresponse ---->", apiResponse)
 
     return (
         <React.Fragment>

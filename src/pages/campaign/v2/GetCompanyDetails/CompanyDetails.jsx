@@ -12,8 +12,7 @@ import { supabase } from '../../../../supabase/integration/client';
 import "./companyDetails.css"
 import { useForm } from 'react-hook-form';
 import {brandDevMockData, businessCategories} from './GetCompanyUtils.js';
-
-
+import { useBrandDev } from '../../../../contexts/BrandDevContext.jsx';
 
 
 const CampaignStep1 = () => {
@@ -22,6 +21,15 @@ const CampaignStep1 = () => {
     website: '',
     businessCategory: ''
   });
+
+  const {
+    mappedData: brand,        
+    fetchSuccess,               
+    isEditing,                   
+    fetchBrandData,              
+    saveBrandData,               
+    toggleEditMode,                  
+  } = useBrandDev();
 
 
   const {
@@ -34,32 +42,41 @@ const CampaignStep1 = () => {
     getValues,
   } = useForm({
     defaultValues: {
-      businessName:  '',
-      category:  '',
+      businessName: '',
+      category: '',
       website: '',
       address: '',
       phone: '',
-      email:'',
-      brandColor:'#6366F1'
+      email: '',
+      brandColor: '#6366F1'
     }
   });
 
-   const formValues = watch();
+  const formValues = watch();
+  const watchedBrandColor = watch('brandColor');
+
+  const [isLoading, setIsLoading] = useState(false);
+  const [localIsFetching, setLocalIsFetching] = useState(false);
+
 
   useEffect(()=>{
     // brandDevApi()
     console.log("the  ---->",brandDevMockData)
   }, [])
 
-  const [isLoading, setIsLoading] = useState(false);
-  const [isFetchingBrand, setIsFetchingBrand] = useState(false);
-  const [brandPreview, setBrandPreview] = useState(null);
-  const [fetchSuccess, setFetchSuccess] = useState(false);
-  const [business, setBusiness] = useState(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [brand, setBrand] = useState(null);
-  const [originalBrand, setOriginalBrand] = useState(null);
-  const [isFetching, setIsFetching] = useState(false);
+  useEffect(() => {
+    if (brand) {
+      reset({
+        businessName: brand.name || '',
+        category: brand.category || '',
+        website: formData.website || brand.website || '',
+        address: brand.address || '',
+        phone: brand.phone || '',
+        email: brand.email || '',
+        brandColor: brand.colors?.primary || '#6366F1'
+      });
+    }
+  }, [brand, formData.website, reset]);
 
 
   const totalSteps = 5;
@@ -67,7 +84,6 @@ const CampaignStep1 = () => {
   const brandDevApi=async()=>{
     try {
       console.log("insdie")
-      // const companyUrl = "https://impelox.com/";
       const { data, error }=await supabase.functions.invoke("brand-dev",{
         body: { companyUrl:"impelox.com" },
       })
@@ -84,69 +100,28 @@ const CampaignStep1 = () => {
   }
 
   const handleFetchBrand = async () => {
-  if (!formData.website || !isValidURL(formData.website)) {
-    toast.error('Please enter a valid website URL');
-    return;
-  }
-
-  setIsFetching(true);
-  setFetchSuccess(false);
-
-  try {
-    toast.loading('Detecting brand information...', { id: 'brand-detect' });
-    const mockApiResponse = await new Promise((resolve) => {
-      setTimeout(() => {
-        resolve(brandDevMockData)
-      }, 1500);
-    });
-
-    if (mockApiResponse.status === "ok" && mockApiResponse.brand) {
-      const brandData = mockApiResponse.brand;
-      
-      const mappedData = {
-        name: brandData.title || brandData.domain.split('.')[0],
-        category: brandData.industries?.eic?.[0]?.subindustry || "Technology",
-        colors: {
-          primary: brandData.colors?.[0]?.hex || '#6366F1',
-          secondary: brandData.colors?.[1]?.hex || '#F1F5F9',
-          palette: brandData.colors || []
-        },
-        website: formData.website,
-        address: brandData.address ? 
-          `${brandData.address.city || ''}, ${brandData.address.country || ''}`.trim() : 
-          '123 Main Street, Kobe, Japan',
-        phone: "+81 78-123-4567",
-        email: `info@${brandData.domain}`,
-        logo: brandData.logos?.[0]?.url || null,
-        description: brandData.description || '',
-        slogan: brandData.slogan || '',
-        socialLinks: brandData.socials || [],
-        rawData: brandData
-      };
-      
-      setBrand(mappedData);
-      setOriginalBrand(mappedData);
-      
-      setValue('businessName', mappedData.name);
-      setValue('category', mappedData.category);
-      setValue('website', formData.website);
-      setValue('address', mappedData.address);
-      setValue('phone', mappedData.phone);
-      setValue('email', mappedData.email);
-      setValue('brandColor', mappedData.colors.primary);
-      
-      setFetchSuccess(true);
-      toast.success('Brand information detected successfully!', { id: 'brand-detect' });
-    } else {
-      throw new Error('Failed to detect brand');
+    if (!formData.website || !isValidURL(formData.website)) {
+      toast.error('Please enter a valid website URL');
+      return;
     }
-  } catch (error) {
-    console.error('Brand detection error:', error);
-    toast.error('Failed to detect brand. Please try again.', { id: 'brand-detect' });
-  } finally {
-    setIsFetching(false);
-  }
-};
+
+    setLocalIsFetching(true);
+
+    try {
+      toast.loading('Detecting brand information...', { id: 'brand-detect' });
+      const result = await fetchBrandData(formData.website);
+      
+      if (result.success) {
+        toast.success('Brand information detected successfully!', { id: 'brand-detect' });
+      }
+    } catch (error) {
+      console.error('Brand detection error:', error);
+      toast.error('Failed to detect brand. Please try again.', { id: 'brand-detect' });
+    } finally {
+      setLocalIsFetching(false);
+    }
+  };
+
 
   const handleChange = (e) => {
     setFormData({
@@ -160,7 +135,7 @@ const CampaignStep1 = () => {
   };
 
   const isFormValid = () => {
-    return formData.website && isValidURL(formData.website);
+    return formData.website && isValidURL(formData.website) && brand;
   };
 
   const isValidURL = (url) => {
@@ -172,204 +147,37 @@ const CampaignStep1 = () => {
     }
   };
 
-  // const handleContinue = async (e) => {
-  //   e.preventDefault();
-
-  //   if (!isFormValid()) {
-  //     toast.error('Please fill in all required fields');
-  //     return;
-  //   }
-
-  //   setIsLoading(true);
-  //   setIsFetchingBrand(true);
-
-  //   try {
-  //     // Fetch brand information
-  //     toast.loading('Fetching your brand information...', { id: 'brand-fetch' });
-
-  //     let brandData = null;
-  //     try {
-  //       brandData = await brandfetchService.fetchBrandInfo(formData.website);
-  //       toast.success('Brand information retrieved!', { id: 'brand-fetch' });
-
-  //       if (brandData) {
-  //         setBrandPreview({
-  //           name: brandData.name,
-  //           logo: brandData.logo?.primary || brandData.logo?.icon,
-  //           colors: brandData.colors
-  //         });
-  //       }
-  //     } catch (brandError) {
-  //       console.warn('Brandfetch error:', brandError);
-  //       toast.dismiss('brand-fetch');
-  //       toast.error('Could not fetch brand info, but you can continue with manual setup');
-  //     }
-
-  //     setIsFetchingBrand(false);
-
-  //     // Save brand data to Supabase if successfully fetched
-  //     if (brandData) {
-  //       try {
-  //         toast.loading('Saving brand information...', { id: 'save-brand' });
-
-  //         const companyDataToSave = {
-  //           name: brandData.name || 'Your Business',
-  //           website: formData.website,
-  //           domain: brandData.domain || formData.website,
-  //           businessCategory: formData.businessCategory,
-  //           description: brandData.description || null,
-  //           industry: brandData.industry || formData.businessCategory,
-
-  //           // Brand information
-  //           logo: {
-  //             primary: brandData.logo?.primary || null,
-  //             icon: brandData.logo?.icon || null
-  //           },
-  //           colors: {
-  //             primary: brandData.colors?.primary || null,
-  //             secondary: brandData.colors?.secondary || null,
-  //             palette: brandData.colors?.palette || []
-  //           },
-
-  //           // Fonts
-  //           fonts: brandData.fonts || null,
-
-  //           // Social links
-  //           socialLinks: brandData.socialLinks || null,
-
-  //           // Additional info
-  //           companyInfo: {
-  //             founded: brandData.companyInfo?.founded || null,
-  //             employees: brandData.companyInfo?.employees || null,
-  //             location: brandData.companyInfo?.location || null
-  //           },
-
-  //           // Store raw brandfetch data for reference
-  //           rawData: brandData
-  //         };
-
-  //         const companyResult = await supabaseCompanyService.saveCompanyInfo(companyDataToSave);
-  //         toast.success('Brand information saved!', { id: 'save-brand' });
-
-  //         // Create draft campaign immediately after company save
-  //         toast.loading('Creating campaign...', { id: 'create-campaign' });
-
-  //         const draftCampaign = await campaignService.createCampaign({
-  //           campaign_name: `${brandData.name || 'Business'} Campaign`,
-  //           company_id: companyResult.company.id,
-  //           status: 'draft',
-  //           payment_status: 'pending',
-  //           template_id: null,
-  //           template_name: null,
-  //           postcard_design_url: null,
-  //           postcard_preview_url: null
-  //         });
-
-  //         if (!draftCampaign || !draftCampaign.success || !draftCampaign.campaign || !draftCampaign.campaign.id) {
-  //           throw new Error('Failed to create campaign. Please try again.');
-  //         }
-
-  //         toast.success('Campaign created!', { id: 'create-campaign' });
-
-  //         // Store campaign data with campaign ID in localStorage
-  //         const campaignData = {
-  //           website: formData.website,
-  //           businessCategory: formData.businessCategory,
-  //           brandData: brandData,
-  //           companyId: companyResult.company.id,
-  //           campaignId: draftCampaign.campaign.id
-  //         };
-
-  //         localStorage.setItem('newCampaignData', JSON.stringify(campaignData));
-  //         localStorage.setItem('currentCampaignStep', '2');
-
-  //       } catch (saveError) {
-  //         console.warn('Failed to save brand info or create campaign:', saveError);
-  //         toast.error('Failed to save data. Please try again.', { id: 'save-brand' });
-  //         return; // Don't proceed if save failed
-  //       }
-  //     } else {
-  //       // No brand data, store minimal campaign data
-  //       const campaignData = {
-  //         website: formData.website,
-  //         businessCategory: formData.businessCategory,
-  //         brandData: null
-  //       };
-
-  //       localStorage.setItem('newCampaignData', JSON.stringify(campaignData));
-  //       localStorage.setItem('currentCampaignStep', '2');
-  //     }
-
-  //     // Navigate to next step
-  //     setTimeout(() => {
-  //       navigate('/campaign/step2');
-  //     }, 500);
-
-  //   } catch (error) {
-  //     console.error('Error:', error);
-  //     toast.error('An error occurred. Please try again.');
-  //   } finally {
-  //     setIsLoading(false);
-  //   }
-  // };
-
-
   async function handleContinue(e) {
     try {
       e.preventDefault();
-      const formValues =  getValues();
-      console.log("hello --->",formValues)
-      navigate('/campaign/step2')
-    } catch (error) {
+      const currentFormValues = getValues();
       
+      const updatedBrand = {
+        ...brand,
+        name: currentFormValues.businessName,
+        category: currentFormValues.category,
+        website: currentFormValues.website,
+        address: currentFormValues.address,
+        phone: currentFormValues.phone,
+        email: currentFormValues.email,
+        colors: {
+          ...brand?.colors,
+          primary: currentFormValues.brandColor
+        }
+      };
+      saveBrandData(updatedBrand, currentFormValues);
+      
+      // Navigate to next step
+      navigate('/campaign/step2');
+    } catch (error) {
+      console.error("Error:", error);
+      toast.error('An error occurred');
     }
   }
 
-  // const brandDetect = (e) => {
-//   e.preventDefault();
-
-//   const mock = {
-//     name: "Brew & Bean Coffee",
-//     category: "Coffee Shop",
-//     colors: {
-//       primary: "#6366F1",
-//       secondary: "#F1F5F9"
-//     },
-//     website: formData.website,
-//     address: "123 Main Street, Columbus, OH 43201",
-//     phone: "(614) 555-0123",
-//     email: "hello@brewandbean.com"
-//   };
-
-//   setBrand(mock);
-//   setOriginalBrand(mock);
   
-//   reset({
-//     businessName: mock.name,
-//     category: mock.category,
-//     website: formData.website || mock.website,
-//     address: mock.address,
-//     phone: mock.phone,
-//     email: mock.email,
-//     brandColor: mock.colors?.primary || '#6366F1'
-//   });
-  
-//   setFetchSuccess(true);
-// };
-
 const handleCancelEdit = () => {
-  if (originalBrand) {
-    reset({
-      businessName: originalBrand.name || '',
-      category: originalBrand.category || '',
-      website: formData.website || originalBrand.website || '',
-      address: originalBrand.address || '',
-      phone: originalBrand.phone || '',
-      email: originalBrand.email || '',
-      brandColor: originalBrand.colors?.primary || '#6366F1'
-    });
-    setBrand(originalBrand);
-  } else if (brand) {
+  if (brand) {
     reset({
       businessName: brand.name || '',
       category: brand.category || '',
@@ -380,13 +188,12 @@ const handleCancelEdit = () => {
       brandColor: brand.colors?.primary || '#6366F1'
     });
   }
-  setIsEditing(false);
+  toggleEditMode();
 };
 
 const onSubmit = (data) => {
-  // Create or update the brand state with form data
   const updatedBrand = {
-    ...(brand || {}),
+    ...brand,
     name: data.businessName,
     category: data.category,
     website: data.website,
@@ -394,17 +201,21 @@ const onSubmit = (data) => {
     phone: data.phone,
     email: data.email,
     colors: {
-      ...(brand?.colors || {}),
+      ...brand?.colors,
       primary: data.brandColor
     }
   };
   
-  setBrand(updatedBrand);
+  saveBrandData(updatedBrand, data);
+  
   setFormData(prev => ({ ...prev, website: data.website }));
-  setIsEditing(false);
 };
 
-  const watchedBrandColor = watch('brandColor');
+
+const handleToggleEdit = (e) => {
+  e.preventDefault();
+  toggleEditMode(); 
+};
   
   
 
@@ -414,7 +225,7 @@ const onSubmit = (data) => {
       totalSteps={totalSteps}
       footerMessage="Enter your website URL and select your business category to continue"
       onContinue={handleContinue}
-      continueDisabled={!isFormValid() || isLoading}
+      continueDisabled={!isFormValid() || localIsFetching}
       continueText={isLoading ? 'Processing...' : 'Continue'}
       onSkip={() => navigate('/dashboard')}
       skipText="Cancel"
@@ -480,7 +291,7 @@ const onSubmit = (data) => {
                 Detect Brand
               </button>
             </form> */}
-            <div className="m-4 w-full flex gap-2">
+            {/* <div className="m-4 w-full flex gap-2">
               <FormInput
                 type="url"
                 id="website"
@@ -489,7 +300,7 @@ const onSubmit = (data) => {
                 value={formData.website}
                 onChange={handleChange}
                 required
-                disabled={isLoading || isFetching|| fetchSuccess}
+                disabled={localIsFetching || fetchSuccess}
                 className='w-full'
                 error={formData.website && !isValidURL(formData.website) ? 'Please enter a valid URL' : ''}
               />
@@ -503,6 +314,46 @@ const onSubmit = (data) => {
                 } disabled:opacity-50 disabled:cursor-not-allowed h-14 px-8 rounded-xl text-base font-bold gap-3`}
               >
                 {isFetching ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                    Detecting...
+                  </>
+                ) : fetchSuccess ? (
+                  <>
+                    <Check className="w-5 h-5 mr-2" />
+                    Brand Found!
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-5 h-5 mr-2" />
+                    Detect Brand
+                  </>
+                )}
+              </button>
+            </div> */}
+            <div className="m-4 w-full flex gap-2">
+              <FormInput
+                type="url"
+                id="website"
+                name="website"
+                placeholder="https://yourcompany.com"
+                value={formData.website}
+                onChange={handleChange}
+                required
+                disabled={localIsFetching || fetchSuccess}
+                className='w-full'
+                error={formData.website && !isValidURL(formData.website) ? 'Please enter a valid URL' : ''}
+              />
+              <button
+                onClick={handleFetchBrand}
+                disabled={!formData.website || localIsFetching}
+                className={`btn text-white flex items-center justify-center min-w-[180px] ${
+                  fetchSuccess 
+                    ? "bg-green-500 hover:bg-green-600" 
+                    : "bg-[#bf92f0]"
+                } disabled:opacity-50 disabled:cursor-not-allowed h-14 px-8 rounded-xl text-base font-bold gap-3`}
+              >
+                {localIsFetching ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin mr-2" />
                     Detecting...
@@ -676,7 +527,7 @@ const onSubmit = (data) => {
                     <button 
                       type="button"
                       className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-medium text-[#6366F1] border border-[#cfc8f7] hover:bg-[#f7f6ff] transition-colors"
-                      onClick={(e) => {e.preventDefault(),setIsEditing(!isEditing)}}
+                      onClick={handleToggleEdit}
                     >
                       <Edit2 className="w-3.5 h-3.5" />
                       Edit
