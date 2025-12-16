@@ -1,17 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import ProcessLayout from '../../../../components/process/ProcessLayout';
-import brandfetchService from '../../../../supabase/api/brandFetchService';
-import campaignService from '../../../../supabase/api/campaignService';
-import supabaseCompanyService from '../../../../supabase/api/companyService';
 import { motion } from 'framer-motion';
 import { FormInput } from '../../../../components/ui';
-import { ChevronLeft, Check, Palette, Zap, Badge, Sparkles, Loader2,Globe,Mail,Building2,Phone,MapPin, ExternalLink,Edit2,X } from 'lucide-react';
+import { ChevronLeft, Check, Palette, Zap, Sparkles, Loader2,Globe,Mail,Building2,Phone,MapPin, ExternalLink,Edit2,X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../../../../supabase/integration/client';
 import "./companyDetails.css"
 import { useForm } from 'react-hook-form';
-import {brandDevMockData, businessCategories} from './GetCompanyUtils.js';
+import {businessCategories} from './GetCompanyUtils.js';
 import { useBrandDev } from '../../../../contexts/BrandDevContext.jsx';
 
 
@@ -28,7 +24,10 @@ const CampaignStep1 = () => {
     isEditing,                   
     fetchBrandData,              
     saveBrandData,               
-    toggleEditMode,                  
+    toggleEditMode,        
+    companyDomain,
+    setCompanyDomainDetails ,
+    clearBrandData       
   } = useBrandDev();
 
 
@@ -54,15 +53,10 @@ const CampaignStep1 = () => {
 
   const formValues = watch();
   const watchedBrandColor = watch('brandColor');
-
+  const totalSteps = 5;
+  
   const [isLoading, setIsLoading] = useState(false);
   const [localIsFetching, setLocalIsFetching] = useState(false);
-
-
-  useEffect(()=>{
-    // brandDevApi()
-    console.log("the  ---->",brandDevMockData)
-  }, [])
 
   useEffect(() => {
     if (brand) {
@@ -79,26 +73,6 @@ const CampaignStep1 = () => {
   }, [brand, formData.website, reset]);
 
 
-  const totalSteps = 5;
-
-  const brandDevApi=async()=>{
-    try {
-      console.log("insdie")
-      const { data, error }=await supabase.functions.invoke("brand-dev",{
-        body: { companyUrl:"impelox.com" },
-      })
-
-      if (error) {
-        throw new Error("Supabase Error:", error);
-      }
-
-      console.log("data --->", data)
-    } catch (error) {
-      console.error("Unexpected Error:", err);
-    }
-    
-  }
-
   const handleFetchBrand = async () => {
     if (!formData.website || !isValidURL(formData.website)) {
       toast.error('Please enter a valid website URL');
@@ -106,6 +80,7 @@ const CampaignStep1 = () => {
     }
 
     setLocalIsFetching(true);
+    setCompanyDomainDetails(formData.website);
 
     try {
       toast.loading('Detecting brand information...', { id: 'brand-detect' });
@@ -131,6 +106,7 @@ const CampaignStep1 = () => {
   };
 
   const handleBack = () => {
+    clearBrandData()
     navigate('/dashboard');
   };
 
@@ -265,9 +241,6 @@ const handleToggleEdit = (e) => {
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <h3 className="text-xl font-bold text-foreground">AI Brand Detection</h3>
-                  <span className="inline-flex items-center rounded-xl bg-gray-400/10 px-2 py-1 text-[0.6rem] font-bold text-[#29ba8c] inset-ring inset-ring-gray-400/20 p-1">
-                    Powered by Brand.dev
-                  </span>
                 </div>
                 <p className="text-muted-foreground">We'll automatically extract all your business info from your website</p>
               </div>
@@ -337,7 +310,7 @@ const handleToggleEdit = (e) => {
                 id="website"
                 name="website"
                 placeholder="https://yourcompany.com"
-                value={formData.website}
+                value={formData.website||companyDomain}
                 onChange={handleChange}
                 required
                 disabled={localIsFetching || fetchSuccess}
@@ -498,20 +471,14 @@ const handleToggleEdit = (e) => {
           <form onSubmit={handleSubmit(onSubmit)}>
             <div className="relative overflow-hidden rounded-3xl border-2 border-[#cfc8f7] bg-linear-to-br from-white to-[#faf9ff] p-8 card-shadow">
               <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-              
               <div className="absolute top-4 right-4 flex gap-2 z-10">
-                <div 
-                style={{ padding: "5px 19px" }}
-                className="inline-flex items-center gap-1 rounded-full cursor-pointer bg-[#29ba8c]/10 px-5 py-3.5 text-[0.8rem] font-semibold text-[#29ba8c] border border-[#29ba8c]/20">
-                  <Check className="w-3 h-3" />
-                  All Data Auto-Detected
-                </div>
                 <div className="flex gap-2">
                   {isEditing && (
                     <button 
                       type="button"
                       className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-medium text-[#ef4444] border border-[#fecaca] hover:bg-[#fef2f2] transition-colors"
                       onClick={handleCancelEdit}
+                      style={{ padding: "5px 19px" }}
                     >
                       <X className="w-3.5 h-3.5" />
                       Cancel
@@ -521,20 +488,35 @@ const handleToggleEdit = (e) => {
                     <button 
                       type="submit"
                       className="inline-flex items-center gap-1.5 rounded-full bg-[#6366F1] px-3 py-1.5 text-xs font-medium text-white border border-[#6366F1] hover:bg-[#4f46e5] transition-colors"
+                      style={{ padding: "5px 19px" }}
                     >
                       <Check className="w-3.5 h-3.5" />
                       Done
                     </button>
                   ) : (
-                    <button 
-                      type="button"
-                      style={{ padding: "5px 19px" }}
-                      className="inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-medium text-[#6366F1] hover:bg-[#f7f6ff] transition-colors"
-                      onClick={handleToggleEdit}
-                    >
-                      <Edit2 className="w-3.5 h-3.5" />
-                      Edit
-                    </button>
+                    <button
+                    type="button"
+                    style={{ padding: "6px 20px" }}
+                    onClick={handleToggleEdit}
+                    className="
+                      inline-flex items-center gap-1.5
+                      rounded-full
+                      bg-gradient-to-r from-[#1e3a8a] to-[#1d4ed8]
+                      text-xs font-semibold text-white
+                      shadow-md shadow-blue-900/30
+                      transition-all duration-300 ease-out
+                      hover:from-[#1e40af] hover:to-[#2563eb]
+                      hover:shadow-lg hover:shadow-blue-900/40
+                      hover:-translate-y-[1px]
+                      active:translate-y-0
+                      active:shadow-md
+                      focus:outline-none
+                      focus:ring-2 focus:ring-blue-500/50
+                    "
+                  >
+                    <Edit2 className="w-3.5 h-3.5 transition-transform duration-300 group-hover:scale-110" />
+                    Edit
+                  </button>                  
                   )}
                 </div>
               </div>

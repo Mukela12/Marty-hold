@@ -1,6 +1,7 @@
 // contexts/BrandDevContext.js
 import React, { createContext, useContext, useState, useCallback } from "react";
 import { brandDevMockData } from "../pages/campaign/v2/GetCompanyDetails/GetCompanyUtils";
+import { supabase } from "../supabase/integration/client";
 
 const BrandDevContext = createContext(null);
 
@@ -47,17 +48,21 @@ export const BrandDevProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const [fetchSuccess, setFetchSuccess] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [companyDomain, setCompanyDomain]=useState(null);
 
   const fetchBrandData = useCallback(async (website) => {
     try {
       setLoading(true);
       setFetchSuccess(false);
 
-      const response = await new Promise((resolve) => {
-        setTimeout(() => {
-          resolve(brandDevMockData);
-        }, 1500);
-      });
+      const {data:brandDevResponse, error }=await supabase.functions.invoke("brand-dev",{
+        body: { companyUrl:website },
+      })
+      if (error) {
+        throw new Error("Supabase Error:", error);
+      }
+      const{data:response} =brandDevResponse;
+
 
       if (response.status === "ok" && response.brand) {
         setApiResponse(response);
@@ -83,6 +88,11 @@ export const BrandDevProvider = ({ children }) => {
     }
   }, []);
 
+
+  const setCompanyDomainDetails= useCallback((domainDetails)=>{
+      setCompanyDomain(domainDetails)
+  }, [])
+
   const saveBrandData = useCallback((brandData, formValues) => {
     setMappedData(brandData);
     setIsEditing(false);
@@ -97,6 +107,8 @@ export const BrandDevProvider = ({ children }) => {
     setMappedData(null);
     setFetchSuccess(false);
     setIsEditing(false);
+    setCompanyDomain(null);
+    setLoading(false);
   }, []);
 
   const value = {
@@ -105,12 +117,14 @@ export const BrandDevProvider = ({ children }) => {
     loading,
     fetchSuccess,
     isEditing,
+    companyDomain,
     fetchBrandData,
     saveBrandData,
     toggleEditMode,
     clearBrandData,
     getBrandInfo: () => mappedData,
     getRawResponse: () => apiResponse,
+    setCompanyDomainDetails
   };
 
   return (
