@@ -145,11 +145,16 @@ export  const businessCategories = [
   ]
 
 
-export function getCompanyDomainFromUrl(url) {
-  try {
-    const hostname = new URL(url).hostname;
-    return hostname.replace(/^www\./, '');
-  } catch(e) {
-    throw new Error("error in getting domain");
+  export function getCompanyDomainFromUrl(url) {
+    try {
+      const normalizedUrl = url.startsWith('http')
+        ? url
+        : `https://${url}`;
+  
+      const hostname = new URL(normalizedUrl).hostname;
+      return hostname.replace(/^www\./, '');
+    } catch (e) {
+      throw new Error('Error getting domain from URL');
+    }
   }
-}
+  
