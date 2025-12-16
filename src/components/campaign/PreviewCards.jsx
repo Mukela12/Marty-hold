@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { cn } from '../../utils/cn';
-import { Star, Zap } from "lucide-react";
+import { Star, Zap, Check } from "lucide-react";
 
-const PreviewCards = ({ className, size = "medium", src }) => {
+const PreviewCards = ({ className, size = "medium", masterTemplate, handleTemplateSelect, selectedTemplates }) => {
     const [ isHover, setIsHover ] = useState(false);
     const sizeClasses = {
         small: 'max-w-sm',
@@ -11,7 +11,9 @@ const PreviewCards = ({ className, size = "medium", src }) => {
     };
 
     return (
-        <main onMouseOver={() => setIsHover(true)} onMouseLeave={() => setIsHover(false)} className={cn("relative", sizeClasses[size], className, "border-blue-300 hover:shadow-2xl hover:border-3 rounded-t-4xl rounded-b-2xl hover:-translate-y-2 hover:shadow-glow transition-all duration-300 hover:scale-[1.02]")}>
+      <main onClick={() => handleTemplateSelect(masterTemplate?.template_id)}>
+        <main onMouseOver={() => setIsHover(true)} onMouseLeave={() => setIsHover(false)} className={cn("relative", sizeClasses[size], className, 
+          "border-blue-300 hover:shadow-2xl hover:border-3 rounded-t-4xl rounded-b-4xl  hover:-translate-y-2 hover:shadow-glow transition-all duration-300 hover:scale-[1.02]", selectedTemplates && "border-3 border-[#4827ec] scale-[1.04]")}>
             {/* Color Gradient */}
             <section className="bg-amber-100 gradient-primary opacity-10 blur-3xl rounded-top-4xl" />
 
@@ -20,10 +22,10 @@ const PreviewCards = ({ className, size = "medium", src }) => {
               <div className="relative overflow-hidden aspect-16/10 flex items-center justify-center">
                 {/* Scaled wrapper */}
                 <div className="origin-center scale-[0.6]">
-                  {src?.html && (
+                  {masterTemplate?.html && (
                     <iframe
-                      srcDoc={src.html}
-                      className="w-[600px] h-[408px] border-0 block rounded-t-[4rem]"
+                      srcDoc={masterTemplate.html}
+                      className="w-[600px] h-[408px] border-0 block rounded-t-[5rem]"
                     />
                   )}
                 </div>
@@ -42,19 +44,19 @@ const PreviewCards = ({ className, size = "medium", src }) => {
             </section>
 
             {isHover &&
-                <section>
-                    <div className="cursor-pointer rounded-t-4xl rounded-b-2xl  absolute inset-0 bg-primary/20 backdrop-blur-[2px] flex items-center justify-center animate-fade-in">
+                <main>
+                    <section className="cursor-pointer rounded-t-4xl rounded-b-4xl  absolute inset-0 bg-primary/20 backdrop-blur-[2px] flex items-center justify-center animate-fade-in">
                         <span className="px-5 select-design py-2.5 rounded-full bg-white text-foreground font-bold shadow-xl flex items-center gap-2 text-[0.8rem]">
                             <Zap className="w-4 h-4" />
                             Select This Design
                         </span>
-                    </div>
-                </section>
+                    </section>
+                </main>
             }
 
             {/* Select Template Content */}
-            <section className="shadow-sm p-4 rounded-b-2xl">
-                <div>
+            <main className="shadow-sm p-4 flex justify-between items-center rounded-b-4xl">
+                <section>
                     <p>Welcome Blend</p>
                     <div className="flex gap-2">
                       <span className="text-[10px] text-bold border border-[#f1f0f5] bg-[#f1f0f5] badge-card rounded-2xl capitalize">
@@ -64,9 +66,17 @@ const PreviewCards = ({ className, size = "medium", src }) => {
                         friendly
                       </span>
                     </div>
-                </div>
-            </section>
+                </section>
+                { selectedTemplates && (
+                <section>
+                  <span className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center shadow-md">
+                    <Check className="w-5 h-5 text-white" strokeWidth={3} />
+                  </span>
+                </section>
+                )}
+            </main>
         </main>
+      </main>
     );
 };
 

@@ -11,11 +11,16 @@ const SelectTemplates = () => {
     const totalSteps = 5;
     const categoryLabel = "IT SECTOR";
     const [templates, setTemplates] = useState([]);
-    const [selectedTemplate, setSelectedTemplate] = useState(null);
+    const [selectedTemplateId, setSelectedTemplateId] = useState(null);
+    const [ selectedTemplate, setIsSelectedTemplate ] = useState({});
 
     useEffect(() => {
       getTemplates();
-    }, [])
+    }, []);
+
+
+    // brand.dev data
+    const { mappedData: brand, apiResponse } = useBrandDev();
 
     /* Get templates from the supabase */
     const getTemplates = async () => {
@@ -30,21 +35,46 @@ const SelectTemplates = () => {
       };
     };
 
-    const handleTemplateSelect = (template, index) => {
+    const handleTemplateSelect = async (template) => {
       try {
-        setSelectedTemplate(index)
+        if(!template) return null;
+
+        /* I am passing this function as a props to the preview template component so i will get the templateId */
+        setSelectedTemplateId(template);
+
+        /* get the template details such as html and the metadata */
+        const selectedTemplate = templates.find(template => template.template_id === selectedTemplateId);
+
+        /* store everything in a state */
+        setIsSelectedTemplate(selectedTemplate);
+
+        /* the below code will come under the continue button for the sake of testing i am doing here  */
+        /* here i am fetching the brand.dev details such as company name, logo, and font-family, colors */
+        // const { socialLinks, slogan, name, logo, email, description } = brand;
+
+        /* Here going to call the clone API */
+        await userCampaign();
       } catch (error) {
         console.error(error);
       };
     };
 
-    const {
-      mappedData: brand,     
-      apiResponse,           
-    } = useBrandDev();
-  
-    console.log("mapped data ---->", brand);
-    console.log("apiresponse ---->", apiResponse)
+    const userCampaign = async () => {
+      try {
+        const userTemplate = templates.find(template => template.template_id == selectedTemplateId);
+
+        /* userCampaign */
+        const { html, meta_data, template_id } = userTemplate;        
+        
+        /* taking the deep copy */
+        const clonedEditorData = JSON.parse(meta_data);
+        
+        /* here i am updating the value */
+        console.log(clonedEditorData?.editorData?.pages?.[0]?.children);
+      } catch (error) {
+        console.error(error);
+      };
+    };
 
     return (
         <React.Fragment>
@@ -94,13 +124,17 @@ const SelectTemplates = () => {
 
                     {/* Cards */}
                     <div className="grid post-card grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-9">
-                      {templates.map((template, ind) => (
-                        <PreviewCards key={ind} src={template} />
+                      {templates.map((template) => (
+                        <PreviewCards 
+                        key={template.template_id} 
+                        handleTemplateSelect={handleTemplateSelect}
+                        selectedTemplates={selectedTemplateId == template.template_id} 
+                        masterTemplate={template} />
                       ))}
                     </div>
 
                     {/* After Selection */}
-                    {/* <div className="p-4 selected after-select rounded-2xl bg-[#e3f2ee] border border-[#c4e8df] animate-scale-in">
+                    <div className="p-4 selected after-select rounded-2xl bg-[#e3f2ee] border border-[#c4e8df] animate-scale-in">
                       <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-xl bg-[#bbe6d9] flex items-center justify-center">
                           <Check className="w-6 h-6 text-[#23b987]" />
@@ -110,7 +144,7 @@ const SelectTemplates = () => {
                           <p className="text-sm text-muted-foreground">Click Continue to customize this design with AI</p>
                         </div>
                       </div>
-                    </div> */}
+                    </div>
                 </ProcessLayout>  
             </main>
         </React.Fragment>
