@@ -1,6 +1,6 @@
 // contexts/BrandDevContext.js
 import React, { createContext, useContext, useState, useCallback } from "react";
-import { brandDevMockData } from "../pages/campaign/v2/GetCompanyDetails/GetCompanyUtils";
+import { getCompanyDomainFromUrl } from "../pages/campaign/v2/GetCompanyDetails/GetCompanyUtils";
 import { supabase } from "../supabase/integration/client";
 
 const BrandDevContext = createContext(null);
@@ -42,6 +42,78 @@ const mapBrandData = (apiResponse, website) => {
   };
 };
 
+const getCompanyDetails = async(url)=>{
+  try {
+    const domain = getCompanyDomainFromUrl(url);
+    const { data, error } = await supabase
+    .from('companies')
+    .select('website, domain, business_category, brandfetch_data')
+    .eq('domain', domain)
+    .order('created_at', { ascending: false })
+    .limit(1);
+    if(error){
+      throw new Error("Error while fetching company details")
+    }
+    return data;
+  } catch (error) {
+    throw error;
+  }
+}
+
+const getBrandFetchApiDetails = async(url)=>{
+  try {
+    const {data:brandDevResponse, error }=await supabase.functions.invoke("brand-dev",{
+      body: { companyUrl:url },
+    })
+    if (error) {
+      throw new Error("Supabase Error:", error);
+    }
+    const{data} =brandDevResponse;
+    return data;
+  } catch (error) {
+    throw error;
+  }
+}
+
+const insertCompanyDetails = async(apiResponse, url, userId)=>{
+  try {
+
+    const { brand } = apiResponse;
+    const payload = {
+      user_id: userId,
+      name: brand?.title ?? null,
+      website: url ?? null,
+      domain: brand?.domain ?? null,
+      description: brand?.description ?? null,
+      industry: brand?.industries?.eic?.[0]?.industry ?? null,
+      business_category: brand?.industries?.eic?.[0]?.subindustry ?? null,
+      logo_url: brand?.logos?.find(l => l.type === "logo")?.url ?? null,
+      logo_icon_url: brand?.logos?.find(l => l.type === "icon")?.url ?? null,
+      primary_color: brand?.colors?.[0]?.hex ?? null,
+      secondary_color: brand?.colors?.[1]?.hex ?? null,
+      color_palette: brand?.colors?.map(c => c.hex).join(",") ?? null,
+      social_links: brand?.socials
+        ? JSON.stringify(brand.socials)
+        : null,
+      location: brand?.address
+        ? `${brand.address.city}, ${brand.address.country}`
+        : null,
+      brandfetch_data: apiResponse 
+    };
+    const { data, error } = await supabase
+      .from("companies")
+      .insert(payload)
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error("Insert failed:", error);
+    }
+  } catch (error) {
+    throw error;
+  }
+}
+
 export const BrandDevProvider = ({ children }) => {
   const [apiResponse, setApiResponse] = useState(null);
   const [mappedData, setMappedData] = useState(null);
@@ -55,14 +127,20 @@ export const BrandDevProvider = ({ children }) => {
       setLoading(true);
       setFetchSuccess(false);
 
-      const {data:brandDevResponse, error }=await supabase.functions.invoke("brand-dev",{
-        body: { companyUrl:website },
-      })
-      if (error) {
-        throw new Error("Supabase Error:", error);
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) {
+        throw new Error('User not authenticated');
       }
-      const{data:response} =brandDevResponse;
+      const dbResponse = await getCompanyDetails(website);
+      let response = null;
 
+      if (!dbResponse?.length) {
+          response = await getBrandFetchApiDetails(website);
+          await insertCompanyDetails(response,website, user.id)
+
+      } else {
+          response = dbResponse[0]?.brandfetch_data ?? null;
+      }
 
       if (response.status === "ok" && response.brand) {
         setApiResponse(response);
@@ -81,7 +159,6 @@ export const BrandDevProvider = ({ children }) => {
         throw new Error("Invalid API response");
       }
     } catch (err) {
-      console.error("Brand fetch error:", err);
       throw err;
     } finally {
       setLoading(false);

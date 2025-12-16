@@ -89,8 +89,7 @@ const CampaignStep1 = () => {
       if (result.success) {
         toast.success('Brand information detected successfully!', { id: 'brand-detect' });
       }
-    } catch (error) {
-      console.error('Brand detection error:', error);
+    } catch (error) {s
       toast.error('Failed to detect brand. Please try again.', { id: 'brand-detect' });
     } finally {
       setLocalIsFetching(false);

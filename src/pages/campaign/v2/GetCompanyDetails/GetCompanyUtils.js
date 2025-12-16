@@ -143,3 +143,13 @@ export  const businessCategories = [
     'Artificial Intelligence & Machine Learning',
     'Other'
   ]
+
+
+export function getCompanyDomainFromUrl(url) {
+  try {
+    const hostname = new URL(url).hostname;
+    return hostname.replace(/^www\./, '');
+  } catch(e) {
+    throw new Error("error in getting domain");
+  }
+}
