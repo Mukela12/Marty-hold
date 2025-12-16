@@ -479,7 +479,6 @@ const handleToggleEdit = (e) => {
                       style={{ padding: "5px 19px" }}
                       className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-medium text-[#ef4444] border border-[#fecaca] hover:bg-[#fef2f2] transition-colors"
                       onClick={handleCancelEdit}
-                      style={{ padding: "5px 19px" }}
                     >
                       <X className="w-3.5 h-3.5" />
                       Cancel
@@ -488,7 +487,6 @@ const handleToggleEdit = (e) => {
                   {isEditing ? (
                     <button 
                       type="submit"
-                      style={{ padding: "5px 19px" }}
                       className="inline-flex items-center gap-1.5 rounded-full bg-[#6366F1] px-3 py-1.5 text-xs font-medium text-white border border-[#6366F1] hover:bg-[#4f46e5] transition-colors"
                       style={{ padding: "5px 19px" }}
                     >
