@@ -29,9 +29,25 @@ const SelectTemplates = () => {
         .from("master_campaign")
         .select("*");
         
-        setTemplates(data);        
+        const htmlBody = dynamicTemplate(data[0]);
+        // data[0].html = htmlBody
+        setTemplates(data);       
       } catch (error) {
         console.error(error?.stack)
+      };
+    };
+
+    /*  */
+    const dynamicTemplate = (template) => {
+      try {
+        const DynamicTemplates = template?.html
+          .replace(/{{companyName}}/g, "title")
+          .replace(/{{website}}/g, "domain")
+          .replace(/{{contact_detail}}/g, "description");
+
+        return DynamicTemplates;
+      } catch (error) {
+        console.error(error);
       };
     };
 

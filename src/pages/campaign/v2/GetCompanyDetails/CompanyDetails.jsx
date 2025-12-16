@@ -500,13 +500,13 @@ const handleToggleEdit = (e) => {
                     className="
                       inline-flex items-center gap-1.5
                       rounded-full
-                      bg-gradient-to-r from-[#1e3a8a] to-[#1d4ed8]
+                      bg-linear-to-r from-[#1e3a8a] to-[#1d4ed8]
                       text-xs font-semibold text-white
                       shadow-md shadow-blue-900/30
                       transition-all duration-300 ease-out
                       hover:from-[#1e40af] hover:to-[#2563eb]
                       hover:shadow-lg hover:shadow-blue-900/40
-                      hover:-translate-y-[1px]
+                      hover:-translate-y-px
                       active:translate-y-0
                       active:shadow-md
                       focus:outline-none
