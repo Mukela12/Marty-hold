@@ -4,7 +4,9 @@ import PreviewCards from '../../../../components/campaign/PreviewCards';
 import {useBrandDev} from '../../../../contexts/BrandDevContext.jsx'
 import { Layout, Wand2, Check } from "lucide-react";
 import { supabase } from '../../../../supabase/integration/client';
+import campaignService from '../../../../supabase/api/campaignService.js';
 import "./selectTemplate.css";
+import toast from 'react-hot-toast';
 
 const SelectTemplates = () => {
     /* templates */
@@ -14,10 +16,12 @@ const SelectTemplates = () => {
     const [ selectedTemplate, setIsSelectedTemplate ] = useState({});
 
     // brand.dev data
-    const { mappedData: brand, apiResponse } = useBrandDev();
+    const { mappedData: brand, apiResponse } = useBrandDev();    
 
     useEffect(() => {
       getTemplates();
+      console.log(selectedTemplate);
+      
     }, []);
 
     /* Get templates from the supabase */
@@ -27,23 +31,34 @@ const SelectTemplates = () => {
         .from("master_campaign")
         .select("*");
         
-        const htmlBody = dynamicTemplate(data[0]);
-        data[0].html = htmlBody
-        setTemplates(data);       
+        if(data.length) {
+          const UpdatedTemplates = data.map((template) => {
+            const templateCopy = JSON.parse(JSON.stringify(template));
+            return dynamicTemplate(templateCopy);
+          });
+          setTemplates(UpdatedTemplates);
+        };
       } catch (error) {
         console.error(error?.stack)
       };
     };
 
-    /*  */
+    /* Dynamic Templates */
     const dynamicTemplate = (template) => {
       try {
+        const { name, slogan, website, phone } = brand;
+        console.log(brand);
+        
         const DynamicTemplates = template?.html
-          .replace(/{{companyName}}/g, "impelox")
-          .replace(/{{website}}/g, "impelox.com")
-          .replace(/{{contact_detail}}/g, "AI FIRST");
+          .replace(/{{companyName}}/g, name)
+          .replace(/{{website}}/g, website)
+          .replace(/{{contact_detail}}/g, phone)
+          .replace(/{{discount}}/g, "50");
 
-        return DynamicTemplates;
+        return {
+          ...template,
+          html: DynamicTemplates
+        };
       } catch (error) {
         console.error(error);
       };
@@ -78,7 +93,7 @@ const SelectTemplates = () => {
         const userTemplate = templates.find(template => template.template_id == selectedTemplateId);
 
         /* userCampaign */
-        const { html, meta_data, template_id } = userTemplate;        
+        const { html, meta_data, template_id } = userTemplate;
         
         /* taking the deep copy */
         const clonedEditorData = JSON.parse(meta_data);
@@ -88,6 +103,49 @@ const SelectTemplates = () => {
       } catch (error) {
         console.error(error);
       };
+    };
+
+    const handleContinue = async () => {
+      if (selectedTemplate) {
+        try {
+          toast.loading('Saving template selection...', { id: 'save-template' });
+        
+          // // Get campaign data and ID from Step 1
+          // const campaignData = localStorage.getItem('newCampaignData');
+          // const parsedCampaignData = campaignData ? JSON.parse(campaignData) : {};
+        
+          // const campaignId = parsedCampaignData.campaignId;
+        
+          // if (!campaignId) {
+          //   throw new Error('Campaign ID not found. Please restart from Step 1.');
+          // }
+        
+          // // Update existing campaign with template information
+          // const updateData = {
+          //   template_id: selectedTemplate.id,
+          //   template_name: selectedTemplate.name
+          // };
+        
+          // const result = await campaignService.updateCampaign(campaignId, updateData);
+        
+          // if (!result.success) {
+          //   throw new Error('Failed to update campaign with template');
+          // }
+        
+          // console.log('Campaign updated with template:', campaignId);
+        
+          // // Store campaign ID and template data for Step 3
+          // localStorage.setItem('currentCampaignId', campaignId);
+          // localStorage.setItem('campaignSelectedTemplate', JSON.stringify(selectedTemplate));
+          // localStorage.setItem('currentCampaignStep', '3');
+        
+          // toast.success('Template saved!', { id: 'save-template' });
+          navigate('/campaign/step3');
+        } catch (error) {
+          console.error('Error updating campaign:', error);
+          toast.error('Failed to save template. Please try again.', { id: 'save-template' });
+        }
+      }
     };
 
     return (
@@ -114,7 +172,7 @@ const SelectTemplates = () => {
                         </h1>
                         <div className='flex justify-center'>
                             <p className="text-lg text-[#b5b0c3] max-w-2xl mx-auto">
-                                AI-curated designs for <span className="font-semibold text-[#4928ed]">{ brand?.category && brand.category}</span> based on your brand
+                                AI-curated designs for <span className="font-semibold text-[#4928ed]">{brand?.category && brand?.category}</span> based on your brand
                             </p>
                         </div>
                     </section>
@@ -130,7 +188,7 @@ const SelectTemplates = () => {
                             {1} designs curated for {brand?.category && brand?.category}
                           </h2>
                           <p className="text-sm text-[#b5b0c3]">
-                            Matching your brand colors and {brand?.category && brand.toLowerCase()} category
+                            Matching your brand colors and {brand?.category && brand?.category} category
                           </p>
                         </div>
                       </div>

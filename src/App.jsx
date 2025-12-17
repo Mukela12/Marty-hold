@@ -109,7 +109,7 @@ function App() {
           path="/campaign/step1"
           element={
             <ProtectedRoute requireEmailVerification requireOnboarding>
-              <CampaignStep1 />
+              <CompanyDetails />
             </ProtectedRoute>
           }
         />
