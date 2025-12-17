@@ -9,18 +9,16 @@ import "./selectTemplate.css";
 const SelectTemplates = () => {
     /* templates */
     const totalSteps = 5;
-    const categoryLabel = "IT SECTOR";
     const [templates, setTemplates] = useState([]);
     const [selectedTemplateId, setSelectedTemplateId] = useState(null);
     const [ selectedTemplate, setIsSelectedTemplate ] = useState({});
 
+    // brand.dev data
+    const { mappedData: brand, apiResponse } = useBrandDev();
+
     useEffect(() => {
       getTemplates();
     }, []);
-
-
-    // brand.dev data
-    const { mappedData: brand, apiResponse } = useBrandDev();
 
     /* Get templates from the supabase */
     const getTemplates = async () => {
@@ -30,7 +28,7 @@ const SelectTemplates = () => {
         .select("*");
         
         const htmlBody = dynamicTemplate(data[0]);
-        // data[0].html = htmlBody
+        data[0].html = htmlBody
         setTemplates(data);       
       } catch (error) {
         console.error(error?.stack)
@@ -41,9 +39,9 @@ const SelectTemplates = () => {
     const dynamicTemplate = (template) => {
       try {
         const DynamicTemplates = template?.html
-          .replace(/{{companyName}}/g, "title")
-          .replace(/{{website}}/g, "domain")
-          .replace(/{{contact_detail}}/g, "description");
+          .replace(/{{companyName}}/g, "impelox")
+          .replace(/{{website}}/g, "impelox.com")
+          .replace(/{{contact_detail}}/g, "AI FIRST");
 
         return DynamicTemplates;
       } catch (error) {
@@ -116,7 +114,7 @@ const SelectTemplates = () => {
                         </h1>
                         <div className='flex justify-center'>
                             <p className="text-lg text-[#b5b0c3] max-w-2xl mx-auto">
-                                AI-curated designs for <span className="font-semibold text-[#4928ed]">{categoryLabel}</span> based on your brand
+                                AI-curated designs for <span className="font-semibold text-[#4928ed]">{ brand?.category && brand.category}</span> based on your brand
                             </p>
                         </div>
                     </section>
@@ -129,10 +127,10 @@ const SelectTemplates = () => {
                         </div>
                         <div>
                           <h2 className="font-bold text-foreground">
-                            {1} designs curated for {categoryLabel}
+                            {1} designs curated for {brand?.category && brand?.category}
                           </h2>
                           <p className="text-sm text-[#b5b0c3]">
-                            Matching your brand colors and {categoryLabel.toLowerCase()} category
+                            Matching your brand colors and {brand?.category && brand.toLowerCase()} category
                           </p>
                         </div>
                       </div>
@@ -150,6 +148,7 @@ const SelectTemplates = () => {
                     </div>
 
                     {/* After Selection */}
+                    {selectedTemplateId && 
                     <div className="p-4 selected after-select rounded-2xl bg-[#e3f2ee] border border-[#c4e8df] animate-scale-in">
                       <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-xl bg-[#bbe6d9] flex items-center justify-center">
@@ -161,6 +160,7 @@ const SelectTemplates = () => {
                         </div>
                       </div>
                     </div>
+                    }
                 </ProcessLayout>  
             </main>
         </React.Fragment>
