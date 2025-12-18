@@ -157,4 +157,22 @@ export  const businessCategories = [
       throw new Error('Error getting domain from URL');
     }
   }
+
+export const masterCategories = [
+  "Technology & Software",
+  "Non-Profit & Government",
+  "Agriculture",
+  "Construction & Real Estate",
+  "Media & Entertainment",
+  "Education & Training",
+  "Professional Services",
+  "Travel & Hospitality",
+  "Energy & Utilities",
+  "Healthcare & Medical",
+  "Finance & Insurance",
+  "Manufacturing & Industrial",
+  "Retail & Consumer Goods",
+  "Food & Beverage",
+  "Sports & Fitness"
+];
   

@@ -1,6 +1,6 @@
 // contexts/BrandDevContext.js
 import React, { createContext, useContext, useState, useCallback } from "react";
-import { getCompanyDomainFromUrl } from "../pages/campaign/v2/GetCompanyDetails/GetCompanyUtils";
+import { getCompanyDomainFromUrl, masterCategories } from "../pages/campaign/v2/GetCompanyDetails/GetCompanyUtils";
 import { supabase } from "../supabase/integration/client";
 
 const BrandDevContext = createContext(null);
@@ -13,14 +13,14 @@ export const useBrandDev = () => {
   return context;
 };
 
-const mapBrandData = (apiResponse, website) => {
+const mapBrandData = (apiResponse, website, aiSuggestedCategory) => {
   if (!apiResponse.brand) return null;
 
   const brandData = apiResponse.brand;
 
   return {
     name: brandData.title || brandData.domain.split(".")[0],
-    category: brandData.industries?.eic?.[0]?.subindustry || "Technology",
+    category: aiSuggestedCategory ||brandData.industries?.eic?.[0]?.industry || "other",
     colors: {
       primary: brandData.colors?.[0]?.hex || "#6366F1",
       secondary: brandData.colors?.[1]?.hex || "#F1F5F9",
@@ -32,7 +32,7 @@ const mapBrandData = (apiResponse, website) => {
           brandData.address.country || ""
         }`.trim()
       : "",
-    phone: "+81 78-123-4567",
+    phone: brandData?.phone||"",
     email: `info@${brandData.domain}`,
     logo: brandData.logos?.[0]?.url || null,
     description: brandData.description || "",
@@ -114,6 +114,31 @@ const insertCompanyDetails = async(apiResponse, url, userId)=>{
   }
 }
 
+async function getMasterMappingIndustry(masterIndustries,apiResponse){
+  try {
+    if(!apiResponse){
+      throw new Error("Brand.dev api fails to fetch the response")
+    }
+    const {brand} = apiResponse;
+    const {industries}= brand;
+    const {eic}= industries
+    const {data, error}=await supabase.functions.invoke("open-ai-industry-mapping", {
+      body:{brandIndustries:eic, masterIndustries:masterIndustries}
+    })
+
+    if(error){
+      throw new Error("Error in master mapping")
+    }
+    const dataResponse = JSON.parse(data?.data)
+    return dataResponse[0]?.matched_category;
+  } catch (error) {
+    toast.error(error?.message)
+  }
+  
+
+}
+
+
 export const BrandDevProvider = ({ children }) => {
   const [apiResponse, setApiResponse] = useState(null);
   const [mappedData, setMappedData] = useState(null);
@@ -121,6 +146,7 @@ export const BrandDevProvider = ({ children }) => {
   const [fetchSuccess, setFetchSuccess] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [companyDomain, setCompanyDomain]=useState(null);
+  const [aiCategorySuggestion, setCategoryAiSuggestion] = useState(null);
 
   const fetchBrandData = useCallback(async (website) => {
     try {
@@ -133,19 +159,23 @@ export const BrandDevProvider = ({ children }) => {
       }
       const dbResponse = await getCompanyDetails(website);
       let response = null;
+      let aiSuggestedCategory = null;
 
       if (!dbResponse?.length) {
           response = await getBrandFetchApiDetails(website);
+          aiSuggestedCategory = await getMasterMappingIndustry(masterCategories,response);
+          setCategoryAiSuggestion(aiSuggestedCategory);
           await insertCompanyDetails(response,website, user.id)
 
       } else {
           response = dbResponse[0]?.brandfetch_data ?? null;
+          aiSuggestedCategory = await getMasterMappingIndustry(masterCategories, response);
+          setCategoryAiSuggestion(aiSuggestedCategory);
       }
 
       if (response.status === "ok" && response.brand) {
         setApiResponse(response);
-
-        const mapped = mapBrandData(response, website);
+        const mapped = mapBrandData(response, website, aiSuggestedCategory);
         setMappedData(mapped);
         setFetchSuccess(true);
         setIsEditing(false);

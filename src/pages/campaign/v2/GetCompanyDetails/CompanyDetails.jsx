@@ -17,10 +17,10 @@ const CampaignStep1 = () => {
     website: '',
     businessCategory: ''
   });
-
+  
   const {
     mappedData: brand,        
-    fetchSuccess,               
+    fetchSuccess,  
     isEditing,                   
     fetchBrandData,              
     saveBrandData,               
@@ -615,7 +615,7 @@ const handleToggleEdit = (e) => {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs text-[#6b7280] font-medium mb-0.5">Category</p>
-                    {isEditing ? (
+                    {/* {isEditing ? (
                       <>
                         <select
                           {...register('category', { required: 'Category is required' })}
@@ -632,11 +632,11 @@ const handleToggleEdit = (e) => {
                           <p className="text-xs text-red-500 mt-1">{errors.category.message}</p>
                         )}
                       </>
-                    ) : (
+                    ) : ( */}
                       <p className="text-sm font-medium text-[#1f2937] truncate">
                         {brand?.category || '—'}
                       </p>
-                    )}
+                    {/* // )} */}
                   </div>
                   {!isEditing && brand?.category && (
                     <Check className="w-4 h-4 text-[#29ba8c] shrink-0" />
