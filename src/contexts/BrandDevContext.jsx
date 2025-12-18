@@ -13,7 +13,7 @@ export const useBrandDev = () => {
   return context;
 };
 
-const mapBrandData = (apiResponse, website, aiSuggestedCategory) => {
+const mapBrandData = (apiResponse, website, companyId, aiSuggestedCategory) => {
   if (!apiResponse.brand) return null;
 
   const brandData = apiResponse.brand;
@@ -39,6 +39,7 @@ const mapBrandData = (apiResponse, website, aiSuggestedCategory) => {
     slogan: brandData.slogan || "",
     socialLinks: brandData.socials || [],
     rawData: brandData,
+    companyId: companyId
   };
 };
 
@@ -47,7 +48,7 @@ const getCompanyDetails = async(url)=>{
     const domain = getCompanyDomainFromUrl(url);
     const { data, error } = await supabase
     .from('companies')
-    .select('website, domain, business_category, brandfetch_data')
+    .select('website, domain, business_category, brandfetch_data, id')
     .eq('domain', domain)
     .order('created_at', { ascending: false })
     .limit(1);
@@ -158,6 +159,7 @@ export const BrandDevProvider = ({ children }) => {
         throw new Error('User not authenticated');
       }
       const dbResponse = await getCompanyDetails(website);
+      
       let response = null;
       let aiSuggestedCategory = null;
 
@@ -174,8 +176,8 @@ export const BrandDevProvider = ({ children }) => {
       }
 
       if (response.status === "ok" && response.brand) {
-        setApiResponse(response);
-        const mapped = mapBrandData(response, website, aiSuggestedCategory);
+
+        const mapped = mapBrandData(response, website, dbResponse?.[0]?.id, aiSuggestedCategory);
         setMappedData(mapped);
         setFetchSuccess(true);
         setIsEditing(false);

@@ -38,6 +38,7 @@ import './App.css'
 /* campaign-V2 Step1 */
 import CompanyDetails from './pages/campaign/v2/GetCompanyDetails/CompanyDetails'
 import SelectTemplates from './pages/campaign/v2/selectTemplates/SelectTemplates'
+import EditTemplate from './pages/campaign/v2/EditTemplate/EditTemplate'
 
 function App() {
   return (
@@ -125,7 +126,7 @@ function App() {
           path="/campaign/step3"
           element={
             <ProtectedRoute requireEmailVerification requireOnboarding>
-              <CampaignStep3 />
+              <EditTemplate />
             </ProtectedRoute>
           }
         />

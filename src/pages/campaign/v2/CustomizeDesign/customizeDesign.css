@@ -1,0 +1,32 @@
+.content-generation {
+    margin-top: 1.2rem;
+    margin-bottom: 1.2rem;
+}
+
+.generate-content {
+    margin-top: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.tone-select {
+   appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+
+  padding: 12px 48px 12px 20px;
+  border-radius: 9999px;
+
+  background: #f7f6ff;
+  border: 2px solid #716bae;
+
+  font-size: 14px;
+  font-weight: 500;
+  color: #1f1f1f;
+
+  outline: none;
+  cursor: pointer;
+}
+
+.tone-select:focus {
+  box-shadow: 0 0 0 3px rgba(91, 75, 255, 0.2);
+}

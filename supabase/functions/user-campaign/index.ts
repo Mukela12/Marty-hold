@@ -20,7 +20,7 @@ Deno.serve(async (req) => {
     }
 
       const postGridUrl = Deno.env.get("VITE_POSTGRID_URL");
-      const postGridKey = Deno.env.get("VITE_POSTGRID_KEY");
+      const postGridKey = Deno.env.get("POSTGRID_API_KEY");
   
       if (!postGridUrl || !postGridKey) {
         throw new Error("Missing PostGrid environment variables");

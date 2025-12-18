@@ -833,7 +833,59 @@ const campaignService = {
 
     // Default to original message if no match
     return errorMessage;
-  }
+  },
+
+
+  /**
+   * Insert a user template link into `user_campaign` table
+   * @param {Object} params - { userId?, companyId?, masterTemplateId?, templateId?, status? }
+   * @returns {Promise<Object>} Inserted user_campaign record
+   */
+  async insertUserTemplate(params = {}) {
+    try {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        throw new Error('User not authenticated');
+      };
+
+      const {
+        userId = user.id,
+        companyId = null,
+        masterTemplateId = null,
+        templateId = null,
+        status = 1
+      } = params;
+
+      const insertUserId = userId || user.id;
+
+      const { data, error } = await supabase
+        .from('user_campaign')
+        .insert([
+          {
+            user_id: insertUserId,
+            company_id: companyId,
+            master_template_id: masterTemplateId,
+            template_id: templateId,
+            status
+          }
+        ])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return {
+        success: true,
+        userCampaign: data
+      };
+    } catch (error) {
+      console.error('Error inserting user template:', error);
+      throw {
+        error: error.message || 'Failed to insert user template',
+        statusCode: error.statusCode || 400
+      };
+    };
+  },
 };
 
 export default campaignService;

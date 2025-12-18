@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import ProcessLayout from '../../../../components/process/ProcessLayout';
 import PreviewCards from '../../../../components/campaign/PreviewCards';
 import {useBrandDev} from '../../../../contexts/BrandDevContext.jsx'
@@ -9,6 +10,8 @@ import "./selectTemplate.css";
 import toast from 'react-hot-toast';
 
 const SelectTemplates = () => {
+  const navigate = useNavigate();
+
     /* templates */
     const totalSteps = 5;
     const [templates, setTemplates] = useState([]);
@@ -20,8 +23,6 @@ const SelectTemplates = () => {
 
     useEffect(() => {
       getTemplates();
-      console.log(selectedTemplate);
-      
     }, []);
 
     /* Get templates from the supabase */
@@ -31,10 +32,11 @@ const SelectTemplates = () => {
         .from("master_campaign")
         .select("*");
         
+        /* brand.dev */
         if(data.length) {
           const UpdatedTemplates = data.map((template) => {
-            const templateCopy = JSON.parse(JSON.stringify(template));
-            return dynamicTemplate(templateCopy);
+            /* postgrid templates */
+            return dynamicTemplate(template);
           });
           setTemplates(UpdatedTemplates);
         };
@@ -46,60 +48,79 @@ const SelectTemplates = () => {
     /* Dynamic Templates */
     const dynamicTemplate = (template) => {
       try {
-        const { name, slogan, website, phone } = brand;
-        console.log(brand);
+        // Handling the null values
+        if (!template || !template.meta_data || !brand) return template;
+
+        // Brand.dev Data's
+        const { name, website, phone, colors } = brand;        
+        console.log(template.html);
         
-        const DynamicTemplates = template?.html
+        /* PostGrid HTML */
+        const textColor =
+          colors?.primary ||
+          colors?.secondary ||
+          colors?.palette?.[0]?.hex ||
+          "#000000";
+          
+          const DynamicTemplates = template?.html
           .replace(/{{companyName}}/g, name)
           .replace(/{{website}}/g, website)
           .replace(/{{contact_detail}}/g, phone)
-          .replace(/{{discount}}/g, "50");
+          .replace(/{{discount}}/g, "50")
+          .replace('</head>', `<style>* { color: ${textColor} !important; }</style></head>`);
+          
+        /* POSTGRID METADATA */
+        const postgridMetaData = typeof template.meta_data == "string" ? JSON.parse(template.meta_data) : template.meta_data;
+        
+        // updated metadata
+        const updatedMeta = {
+          ...postgridMetaData,
+          editorData: {
+            ...postgridMetaData.editorData,
+            pages: postgridMetaData.editorData.pages.map(page => ({
+              ...page,
+              children: page.children.map(child => ({
+                ...child,
+                text: postgridTextReplace(child.text, brand)
+              }))
+            }))
+          }
+        };
 
         return {
           ...template,
-          html: DynamicTemplates
+          html: DynamicTemplates,
+          meta_data: JSON.stringify(updatedMeta)
         };
       } catch (error) {
         console.error(error);
       };
     };
 
-    const handleTemplateSelect = async (template) => {
+    /* replaceHelperMethod util */
+    const postgridTextReplace = (text, brandData) => {
+      if (!text) return text;
+
+      const { name, website, phone } = brandData;
+      return text
+        .replace(/{{companyName}}/g, name)
+        .replace(/{{website}}/g, website)
+        .replace(/{{contact_detail}}/g, phone)
+        .replace(/{{discount}}/g, "50");
+    };
+
+    const handleTemplateSelect = async (templateid) => {
       try {
-        if(!template) return null;
+        if(!templateid) return null;
 
         /* I am passing this function as a props to the preview template component so i will get the templateId */
-        setSelectedTemplateId(template);
+        setSelectedTemplateId(templateid);
 
         /* get the template details such as html and the metadata */
-        const selectedTemplate = templates.find(template => template.template_id === selectedTemplateId);
+        const selectedTemplate = templates.find(template => template.template_id === templateid);
 
         /* store everything in a state */
         setIsSelectedTemplate(selectedTemplate);
-
-        /* the below code will come under the continue button for the sake of testing i am doing here  */
-        /* here i am fetching the brand.dev details such as company name, logo, and font-family, colors */
-        // const { socialLinks, slogan, name, logo, email, description } = brand;
-
-        /* Here going to call the clone API */
-        await userCampaign();
-      } catch (error) {
-        console.error(error);
-      };
-    };
-
-    const userCampaign = async () => {
-      try {
-        const userTemplate = templates.find(template => template.template_id == selectedTemplateId);
-
-        /* userCampaign */
-        const { html, meta_data, template_id } = userTemplate;
-        
-        /* taking the deep copy */
-        const clonedEditorData = JSON.parse(meta_data);
-        
-        /* here i am updating the value */
-        console.log(clonedEditorData?.editorData?.pages?.[0]?.children);
       } catch (error) {
         console.error(error);
       };
@@ -109,43 +130,72 @@ const SelectTemplates = () => {
       if (selectedTemplate) {
         try {
           toast.loading('Saving template selection...', { id: 'save-template' });
+
+          // Get campaign data and ID from Step 1
+          const campaignData = localStorage.getItem('newCampaignData');
+                    
+          const parsedCampaignData = campaignData ? JSON.parse(campaignData) : {};
         
-          // // Get campaign data and ID from Step 1
-          // const campaignData = localStorage.getItem('newCampaignData');
-          // const parsedCampaignData = campaignData ? JSON.parse(campaignData) : {};
+          const campaignId = parsedCampaignData.campaignId;
         
-          // const campaignId = parsedCampaignData.campaignId;
+          if (!campaignId) {
+            throw new Error('Campaign ID not found. Please restart from Step 1.');
+          };
         
-          // if (!campaignId) {
-          //   throw new Error('Campaign ID not found. Please restart from Step 1.');
-          // }
-        
-          // // Update existing campaign with template information
-          // const updateData = {
-          //   template_id: selectedTemplate.id,
-          //   template_name: selectedTemplate.name
-          // };
-        
-          // const result = await campaignService.updateCampaign(campaignId, updateData);
-        
-          // if (!result.success) {
-          //   throw new Error('Failed to update campaign with template');
-          // }
-        
-          // console.log('Campaign updated with template:', campaignId);
-        
-          // // Store campaign ID and template data for Step 3
-          // localStorage.setItem('currentCampaignId', campaignId);
-          // localStorage.setItem('campaignSelectedTemplate', JSON.stringify(selectedTemplate));
-          // localStorage.setItem('currentCampaignStep', '3');
-        
-          // toast.success('Template saved!', { id: 'save-template' });
-          navigate('/campaign/step3');
+          // Update existing campaign with template information
+          /* Earlier They Handled Using The Local Storage Now In State */
+          const metaData = typeof selectedTemplate.meta_data == "string" ? JSON.parse(selectedTemplate.meta_data): selectedTemplate.meta_data;
+          const postgridMetaData = structuredClone(metaData);
+          
+          const { data, error } = await supabase.functions.invoke("user-campaign", {
+            body: {
+              name: `Cloned Template - ${campaignId}`,
+              html: selectedTemplate.html,
+              templateType: "editor",
+              editorData: postgridMetaData.editorData,
+              editorCollateral: postgridMetaData.editorCollateral,
+              editorCollateralDest: postgridMetaData.editorCollateralDest,
+              editorPostcardSide: postgridMetaData.editorPostcardSide
+            }
+          });
+
+          if(!error) {
+            const insertUserParams = {
+              masterTemplateId: selectedTemplate?.template_id,
+              templateId: data?.data?.id,
+              companyId: brand?.companyId,
+              status: 1
+            };
+
+            await campaignService.insertUserTemplate(insertUserParams);
+            
+            const updateData = {
+              template_id: data?.data?.id,
+              template_name: data?.[0]?.v
+            };
+            
+            const result = await campaignService.updateCampaign(campaignId, updateData);
+            
+            if (!result.success) {
+              throw new Error('Failed to update campaign with template');
+            };
+            
+            // // Store campaign ID and template data for Step 3
+            localStorage.setItem('currentCampaignId', campaignId);
+            
+            // localStorage.setItem('campaignSelectedTemplate', JSON.stringify(selectedTemplate));
+            localStorage.setItem('currentCampaignStep', '3');
+            
+            toast.success('Template saved!', { id: 'save-template' });
+            navigate('/campaign/step3');
+            return;
+          };
+          throw new Error('Failed to update campaign with template');
         } catch (error) {
           console.error('Error updating campaign:', error);
           toast.error('Failed to save template. Please try again.', { id: 'save-template' });
-        }
-      }
+        };
+      };
     };
 
     return (
@@ -154,10 +204,10 @@ const SelectTemplates = () => {
                 {/* Header And Footer Layout */}
                 <ProcessLayout currentStep={2} totalSteps={totalSteps}
                     // footerMessage={selectedTemplate
-                    //     ? `Continue with ${selectedTemplate.name} template`
+                    //     ? `Continue with ${selectedTemplate.description} template`
                     //     : "Please select a template before continuing to the editor"}
-                    // onContinue={handleContinue}
-                    // continueDisabled={!selectedTemplate}
+                    onContinue={handleContinue}
+                    continueDisabled={!selectedTemplate}
                     onSkip={() => navigate('/dashboard')}
                     skipText="Cancel">
                   

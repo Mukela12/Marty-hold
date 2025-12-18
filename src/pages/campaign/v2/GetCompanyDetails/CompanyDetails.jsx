@@ -9,7 +9,7 @@ import "./companyDetails.css"
 import { useForm } from 'react-hook-form';
 import {businessCategories} from './GetCompanyUtils.js';
 import { useBrandDev } from '../../../../contexts/BrandDevContext.jsx';
-
+import campaignService from '../../../../supabase/api/campaignService.js';
 
 const CampaignStep1 = () => {
   const navigate = useNavigate();
@@ -142,6 +142,34 @@ const CampaignStep1 = () => {
       };
       saveBrandData(updatedBrand, currentFormValues);
       
+      /* creating the campaign */
+      const draftCampaign = await campaignService.createCampaign({
+        campaign_name: `${currentFormValues.businessName || 'Business'} Campaign`,
+        company_id: brand?.companyId,
+        status: 'draft',
+        payment_status: 'pending',
+        template_id: null,
+        template_name: null,
+        postcard_design_url: null,
+        postcard_preview_url: null
+      });
+      
+      if (!draftCampaign || !draftCampaign.success || !draftCampaign.campaign || !draftCampaign.campaign.id) {
+        throw new Error('Failed to create campaign. Please try again.');
+      };
+      toast.success('Campaign created!', { id: 'create-campaign' });
+
+      const campaignData = {
+        website: currentFormValues.website,
+        businessCategory: currentFormValues.category,
+        brandData: brand,
+        companyId: brand?.companyId,
+        campaignId: draftCampaign.campaign.id
+      };
+
+      localStorage.setItem('newCampaignData', JSON.stringify(campaignData));
+      localStorage.setItem('currentCampaignStep', '2');
+
       // Navigate to next step
       navigate('/campaign/step2');
     } catch (error) {
@@ -198,7 +226,7 @@ const handleToggleEdit = (e) => {
     <ProcessLayout
       currentStep={1}
       totalSteps={totalSteps}
-      footerMessage="Enter your website URL and select your business category to continue"
+      footerMessage="Enter your website URL"
       onContinue={handleContinue}
       continueDisabled={!isFormValid() || localIsFetching}
       continueText={isLoading ? 'Processing...' : 'Continue'}
