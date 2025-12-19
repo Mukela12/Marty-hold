@@ -26,6 +26,8 @@ export const AuthProvider = ({ children }) => {
 
   // Ref to prevent duplicate onboarding status checks
   const isCheckingOnboarding = useRef(false)
+  // Ref to track if auth has been initialized (prevents redundant onboarding checks)
+  const authInitialized = useRef(false)
 
   // Check onboarding status with debouncing
   const checkOnboardingStatus = async () => {
@@ -66,6 +68,7 @@ export const AuthProvider = ({ children }) => {
 
           // Load onboarding status for authenticated user
           await checkOnboardingStatus()
+          authInitialized.current = true
         }
       } catch (error) {
         console.error('Error initializing auth:', error)
@@ -78,8 +81,8 @@ export const AuthProvider = ({ children }) => {
 
     // Listen to auth state changes
     const { data: { subscription } } = supabaseAuthService.onAuthStateChange(
-      async (event, session) => {
-        console.log('Auth state change:', event, session)
+      async (event, newSession) => {
+        console.log('Auth state change:', event, newSession?.user?.id || 'no session')
 
         // Filter events: Only respond to meaningful auth events
         // Ignore TOKEN_REFRESHED to prevent reload-like behavior on tab switching
@@ -91,21 +94,43 @@ export const AuthProvider = ({ children }) => {
           return
         }
 
-        if (session) {
-          setSession(session)
-          setUser(session.user)
+        if (newSession) {
+          // SESSION COMPARISON: Prevent duplicate processing of the same session
+          const currentAccessToken = session?.access_token
+          const newAccessToken = newSession.access_token
+          const currentUserId = session?.user?.id
+          const newUserId = newSession.user?.id
+
+          // If the session hasn't actually changed, skip processing
+          if (currentAccessToken === newAccessToken && currentUserId === newUserId) {
+            console.log('Session unchanged (same token & user), skipping update')
+            return
+          }
+
+          // Session has changed or is new - update state
+          console.log('Processing new/changed session')
+          setSession(newSession)
+          setUser(newSession.user)
           setIsAuthenticated(true)
 
-          // Only load onboarding status on sign-in, not on every token refresh
-          if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+          // Only check onboarding on fresh sign-in (not on session rehydration)
+          // authInitialized tracks if we've already loaded onboarding for this auth session
+          if (!authInitialized.current) {
+            console.log('First auth initialization, checking onboarding status')
             await checkOnboardingStatus()
+            authInitialized.current = true
+          } else {
+            console.log('Auth already initialized, skipping onboarding check')
           }
         } else {
+          // Sign out
+          console.log('User signed out, clearing auth state')
           setSession(null)
           setUser(null)
           setIsAuthenticated(false)
           setOnboardingCompleted(false)
           setCurrentOnboardingStep(1)
+          authInitialized.current = false
         }
 
         setLoading(false)
