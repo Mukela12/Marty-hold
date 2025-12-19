@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { cn } from '../../utils/cn';
 import { Star, Zap, Check } from "lucide-react";
 
-const PreviewCards = ({ className, size = "medium", masterTemplate, handleTemplateSelect, selectedTemplates }) => {
+const PreviewCards = ({ className, size = "medium", masterTemplate, handleTemplateSelect, selectedTemplates, aiScore }) => {
     const [ isHover, setIsHover ] = useState(false);
     const sizeClasses = {
         small: 'max-w-sm',
@@ -38,7 +38,7 @@ const PreviewCards = ({ className, size = "medium", masterTemplate, handleTempla
               <div className="absolute top-4 right-4">
                 <span className="gradient-primary inline-flex items-center gap-1 p-1 rounded-2xl text-white text-[8px]">
                   <Star className="w-3 h-3" />
-                  Best Match
+                  Ai Ratings : {`${aiScore}%`}
                 </span>
               </div>
             </section>
