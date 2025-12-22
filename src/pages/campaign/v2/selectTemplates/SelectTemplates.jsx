@@ -159,7 +159,9 @@ const SelectTemplates = () => {
         aiSuggestions.ranking.forEach(item => {
           scoresMap[item.templateId] = {
             score: item.score || 0,
-            reason: item.reason || ''
+            reason: item.reason || '',
+            tone:item?.tone||'',
+            welComeMessage:item?.welcomeMessage||''
           };
         });
       } else {
@@ -170,7 +172,9 @@ const SelectTemplates = () => {
 
       const sortedTemplates = templatesData.map(item => ({
         ...item,
-        score: scoresMap[item.template_id]?.score || 0 
+        score: scoresMap[item.template_id]?.score || 0,
+        welcomeMessage:scoresMap[item.template_id]?.welComeMessage||'',
+        tone:scoresMap[item.template_id]?.tone||'',
     }))
     .sort((a, b) => b.score - a.score);
       
@@ -349,6 +353,8 @@ const SelectTemplates = () => {
                             selectedTemplates={selectedTemplateId == template.template_id} 
                             masterTemplate={template}
                             aiScore={template.score}
+                            welcomeMessage={template.welcomeMessage}
+                            tone={template.tone}
                           />
                         ))}
                       </div>

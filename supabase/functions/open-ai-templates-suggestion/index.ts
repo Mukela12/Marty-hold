@@ -26,260 +26,6 @@ Deno.serve(async (req) => {
       });
     }    
     const { brand, templates } = await req.json();
-    console.log("brand details--->", brand, templates)
-    // const prompt = `
-    //   Brand-to-Template Matching Analysis
-
-    //   You are an advanced brand identity matching engine with dynamic industry analysis capabilities
-
-    //   BRAND: ${JSON.stringify(brand, null, 2)}
-
-    //   TEMPLATES: ${JSON.stringify(templates, null, 2)}
-
-    //   TASK: Find the most suitable template for this brand.
-
-    //   IMPORTANT RULES (must follow):
-    //   1. You MUST use the exact template_master_id provided inside the templates input.
-    //   2. NEVER invent or hallucinate any template IDs or names.
-    //   3. Only choose from the templates passed in the "templates" array.
-    //   4. If you reference a template, you MUST use its actual "template_master_id".
-
-    //   ANALYSIS APPROACH:
-    //   1. Understand what the brand DOES (from industries/description)
-    //   2. For each template, understand what it's DESIGNED FOR (from content)
-    //   3. Apply logical matching: Would this brand realistically use this template?
-    //   4. Score based on relevance, tone fit, and customization potential
-
-    //   SCORING (0-100):
-    //   - 80-100: Excellent match (template perfectly aligns with brand's business)
-    //   - 60-79: Good match (template can work well with minor adjustments)
-    //   - 40-59: Acceptable match (significant adaptation needed but possible)
-    //   - 20-39: Poor match (major content/business model mismatch)
-    //   - 0-19: Very poor match (completely unrelated purposes)
-
-    //   KEY QUESTIONS TO ASK:
-    //   1. Does this template's primary purpose align with what this brand does?
-    //   2. Would this template's tone be appropriate for this brand's industry?
-    //   3. Can this template's content be adapted to fit this brand's messaging?
-    //   4. Is there a logical connection between template use case and brand activities?
-
-    //   COMMON SENSE EXAMPLES (not rules, just thinking patterns):
-    //   - Professional services brands need professional-looking templates
-    //   - Retail brands can use promotional/sales templates
-    //   - B2B companies usually avoid casual/consumer-focused designs
-    //   - Highly specific templates only work for matching industries
-    //   - Generic templates work better across different industries
-
-    //   OUTPUT REQUIREMENTS:
-    //   - Include ALL templates in ranking
-    //   - No duplicate template IDs
-    //   - Scores between 0-100
-    //   - Reasons must reference ACTUAL analysis
-
-    //   REQUIRED JSON FORMAT:
-    //   {
-    //     "bestTemplateId": "template_master_id_from_list",
-    //     "score": number_between_0_and_100,
-    //     "reasons": [
-    //       "Reason based on content-business alignment",
-    //       "Reason based on tone/professionalism fit",
-    //       "Reason based on practical adaptability"
-    //     ],
-    //     "ranking": [
-    //       {"templateId": "template_master_id_from_list", "score": number},
-    //       {"templateId": "template_master_id_from_list", "score": number},
-    //       {"templateId": "template_master_id_from_list", "score": number},
-    //       {"templateId": "template_master_id_from_list", "score": number}
-    //     ]
-    //   }
-
-    //   GUIDING PRINCIPLE: 
-    //   1) Use logical reasoning.
-    //   2) not hardcoded rules. 
-    //   3)If a template's content doesn't make sense for a brand's business, score it low.
-    //   4)Output format must and should follow the REQUIRED JSON FORMAT no comparmize in that.
-    //   `;
-//      const prompt = `# BRAND-TO-TEMPLATE CONTEXTUAL MATCHING SYSTEM
-
-// ## CRITICAL RULES:
-// 1. OUTPUT MUST BE PURE VALID JSON ONLY
-// 2. USE EXACT "template_id" FROM TEMPLATES ARRAY
-// 3. ANALYZE PATTERNS, NOT PRE-DEFINED CATEGORIES
-// 4. NO HARDCODED INDUSTRY KNOWLEDGE
-
-// # INPUT DATA:
-// BRAND DATA: ${JSON.stringify(brand, null, 2)}
-
-// TEMPLATES DATA (Text Content Only):
-// ${JSON.stringify(templates.map((t: { template_id: any; html: string; }) => ({
-//   template_id: t.template_id,
-//   // Extract ALL text content from HTML (clean, no tags)
-//   content_text: t.html.replace(/<[^>]*>/g, ' ')
-//                       .replace(/\{\{[^}]*\}\}/g, '')  // Remove placeholders
-//                       .replace(/\s+/g, ' ')
-//                       .trim(),
-//   // Raw HTML snippet for context (first 200 chars)
-//   html_preview: t.html.substring(0, 200).replace(/</g, '&lt;').replace(/>/g, '&gt;')
-// })), null, 2)}
-
-// # ANALYTICAL APPROACH:
-
-// ## PHASE 1: UNDERSTAND THE BRAND CONTEXT
-// Read the brand data and identify:
-// 1. What business activities are described?
-// 2. What language/tone is used in description?
-// 3. What implicit industry can be inferred?
-// 4. What type of communication would this brand need?
-
-// ## PHASE 2: ANALYZE EACH TEMPLATE CONTEXT
-// For each template's content_text:
-// 1. Read the actual words and phrases
-// 2. Identify recurring themes or subjects
-// 3. Determine what type of entity would use this language
-// 4. Note any specialized terminology
-
-// ## PHASE 3: CONTEXTUAL MATCHING METHODOLOGY
-
-// ### Step 1: Semantic Domain Extraction
-// From brand description, extract:
-// - Key activity verbs (what they do)
-// - Key subject nouns (what they work with)
-// - Key industry terminology
-// - Target audience hints
-
-// From template content, extract:
-// - Domain-specific vocabulary
-// - Service/product references
-// - Customer interaction patterns
-// - Communication purpose
-
-// ### Step 2: Domain Overlap Analysis
-// Compare:
-// - Do the semantic domains overlap?
-// - Is template vocabulary appropriate for brand's activities?
-// - Would template content make sense coming from this brand?
-
-// ### Step 3: Communication Purpose Alignment
-// Assess:
-// - What is the template trying to achieve? (inform, promote, transact, etc.)
-// - What communication needs does the brand have?
-// - Is there alignment in communication goals?
-
-// ## SCORING FRAMEWORK (0-100):
-
-// ### A. Semantic Coherence (0-40)
-// - 35-40: Template content semantically aligns perfectly with brand's described activities
-// - 25-34: Template content is in a related semantic domain
-// - 15-24: Some semantic overlap exists
-// - 5-14: Minimal semantic connection
-// - 0-4: Semantic domains are contradictory
-
-// ### B. Contextual Appropriateness (0-30)
-// - 25-30: Template's communication style perfectly matches brand's tone/needs
-// - 20-24: Style is generally appropriate
-// - 15-19: Some style mismatch but workable
-// - 10-14: Significant style adjustment needed
-// - 0-9: Inappropriate communication style
-
-// ### C. Content Adaptability (0-20)
-// - 15-20: Content can be directly used or minimally adapted
-// - 10-14: Requires moderate content modification
-// - 5-9: Requires substantial rewriting
-// - 0-4: Core content is incompatible
-
-// ### D. Practical Utility (0-10)
-// - 8-10: Template serves a clear business need for this brand
-// - 5-7: Could serve some utility with adaptation
-// - 0-4: Little practical utility for this brand
-
-// ## DECISION-MAKING PRINCIPLES:
-
-// 1. **Contextual Fit Over Keywords**: Look for overall context match, not specific words
-// 2. **Business Logic First**: Would using this template make business sense?
-// 3. **Communication Need**: Does the brand need this type of communication?
-// 4. **Natural Language Understanding**: Read and comprehend both texts naturally
-
-// ## THINKING PROCESS (INTERNAL):
-
-// For each template, follow this reasoning chain:
-// 1. "When I read this template's content, what kind of business comes to mind?"
-// 2. "When I read the brand description, what kind of business is this?"
-// 3. "Would the business from step 1 use the template from step 2?"
-// 4. "If not, could the template be adapted? How much change?"
-// 5. "Does the adaptation make practical sense?"
-
-// ## PATTERN RECOGNITION GUIDELINES:
-
-// 1. **Specialized Terminology Detection**:
-//    - If template uses highly specialized terms, it's likely for a specific domain
-//    - If brand operates in that domain, high match
-//    - If brand doesn't operate there, low match
-
-// 2. **General vs Specific Content**:
-//    - General content templates = wider applicability
-//    - Specific content templates = narrow applicability
-
-// 3. **Communication Type Recognition**:
-//    - Promotional language = sales/marketing businesses
-//    - Instructional language = service/consulting businesses
-//    - Transactional language = retail/e-commerce businesses
-//    - Informational language = most businesses
-
-// ## OUTPUT FORMAT - MUST FOLLOW EXACTLY:
-
-// {
-//   "bestTemplateId": "exact_template_id",
-//   "score": 85,
-//   "confidence": "high/medium/low",
-//   "primaryMatchReason": "Context-based reason without industry names",
-//   "analysis": {
-//     "brandContext": "Brief summary of brand's apparent business focus",
-//     "templateContext": "Brief summary of template's apparent purpose",
-//     "semanticAlignment": "Description of how contexts align or differ",
-//     "adaptationRequired": "What would need to change if used"
-//   },
-//   "ranking": [
-//     {
-//       "templateId": "id1",
-//       "score": 95,
-//       "reason": "Contextual reason based on semantic analysis"
-//     },
-//     {
-//       "templateId": "id2",
-//       "score": 87,
-//       "reason": "Contextual reason based on semantic analysis"
-//     }
-//   ],
-//   "methodologyNotes": [
-//     "Note on analytical approach used"
-//   ]
-// }
-
-// ## CRITICAL AVOIDANCES:
-
-// 1. DO NOT reference specific industries (medical, automotive, etc.)
-// 2. DO NOT use pre-defined category names
-// 3. DO NOT hardcode any business types
-// 4. DO NOT assume any template purposes
-// 5. DO READ and COMPREHEND texts naturally
-
-// ## ANALYTICAL MINDSET:
-
-// Approach this as a natural language understanding task:
-// 1. Read brand text → form mental model of business
-// 2. Read template text → form mental model of use case
-// 3. Compare mental models → assess compatibility
-// 4. Score based on model overlap
-
-// ## FINAL GUIDANCE:
-
-// Use your natural language understanding capabilities to:
-// 1. Comprehend the brand's described activities
-// 2. Comprehend each template's content and implied use
-// 3. Assess whether the template's implied use aligns with the brand's activities
-// 4. Score based on the depth of this alignment
-
-// All analysis must emerge from reading the texts, not from pre-existing knowledge.`
 
 const prompt = `# TEMPLATE MATCHING - VERSION 2.0
 Brand-to-Template Matching Analysis
@@ -374,6 +120,38 @@ Template 1: "coding skills are mastered here"
 Template 2: "grasp the latest techonology here by mastering current trend tech"
  → here Template 1 and Template 2 both sticks with the same topic , now you have give best template score based on the brand needs give score among them"
 
+## TONE CLASSIFICATION SYSTEM:
+
+### AVAILABLE TONE CATEGORIES:
+- friendly
+- professional  
+- luxury
+- playful
+
+### TONE ANALYSIS METHOD:
+1. Analyze ONLY the template content text
+2. Look at word choice, sentence structure, and implied relationship with reader
+3. Classify based on these textual patterns:
+
+### TONE IDENTIFICATION GUIDELINES:
+- **Friendly**: Uses warm, casual, welcoming language. May include conversational phrases, exclamations, or personal pronouns like "you", "we", "our". Often inviting and approachable.
+- **Professional**: Uses formal, precise, business-like language. Focuses on expertise, quality, reliability. May include industry terms, formal structure, and measured tone.
+- **Luxury**: Uses sophisticated, elegant, exclusive language. Emphasizes premium quality, uniqueness, status. Often descriptive with rich vocabulary.
+- **Playful**: Uses fun, energetic, creative language. May include humor, whimsy, or imaginative expressions. Often light-hearted and engaging.
+
+### TONE DECISION RULES:
+1. Each template gets ONE tone from the four categories above
+2. Choose the tone that BEST describes the majority of the text's character
+3. If equally balanced between two tones, choose based on PRIMARY PURPOSE of template
+4. Base decision ONLY on words and meaning in the template content
+
+## WELCOME MESSAGE GENERATION:
+- Create a TWO-word welcome message based on template tone and content
+- Message should reflect the tone classification
+- Use only words or concepts present or strongly implied in template content
+- Keep it natural and appropriate to the template's style
+
+
 
 ## OUTPUT FORMAT (EXACT STRUCTURE):
 {
@@ -383,11 +161,15 @@ Template 2: "grasp the latest techonology here by mastering current trend tech"
     {
       "templateId": "template_id_1",
       "score": score_1,
+      "tone": "one_of_four_classifications mentioned in Tone_MASTER, follow the TONE_GUIDE_LINES",
+      "welcomeMessage": "two_word_message", 
       "reason": "One sentence explaining topic similarity"
     },
     {
       "templateId": "template_id_2",
       "score": score_2,
+      "tone": "one_of_four_classifications mentioned in Tone_MASTER, follow the TONE_GUIDE_LINES",
+      "welcomeMessage": "two_word_message",
       "reason": "One sentence explaining topic similarity"
     }
     // Include ALL templates in ranking, highest score first
@@ -400,12 +182,16 @@ Template 2: "grasp the latest techonology here by mastering current trend tech"
 3)Do NOT reference specific industries
 4)Do NOT make own assumptions
 5)score must be given based on the previous instruction mentioned above
+6) Tone classification must be based ONLY on the template content text
+7) Welcome message must be derived ONLY from template content meaning
 
 ## FINAL REMINDER:
 Look at the brand text.
 Look at each template's content.
 Score based on how similar the topics are and based on MEANING similarity, not word matching each template should have unique scores.
 That's it.
+Analyze each template's text to determine its tone.
+Create a two-word welcome message fitting that tone.
 All analysis must emerge from reading the texts, not from pre-existing knowledge.
 NOW OUTPUT JSON:`
     const response = await openai.chat.completions.create({
@@ -413,9 +199,6 @@ NOW OUTPUT JSON:`
       messages: [{ role: "user", content: prompt }],
       temperature: 0.2,
     });
-
-    console.log("response ---->", response)
-
     const reply = response.choices?.[0]?.message?.content ?? "No response from OpenAI";
 
     return jsonResponse({data:reply})

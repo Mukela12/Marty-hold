@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { cn } from '../../utils/cn';
 import { Star, Zap, Check } from "lucide-react";
 
-const PreviewCards = ({ className, size = "medium", masterTemplate, handleTemplateSelect, selectedTemplates, aiScore }) => {
+const PreviewCards = ({ className, size = "medium", masterTemplate, handleTemplateSelect, selectedTemplates, aiScore, welcomeMessage="Welcome Blend", tone="Friendly" }) => {
     const [ isHover, setIsHover ] = useState(false);
     const sizeClasses = {
         small: 'max-w-sm',
@@ -57,13 +57,10 @@ const PreviewCards = ({ className, size = "medium", masterTemplate, handleTempla
             {/* Select Template Content */}
             <main className="shadow-sm p-4 flex justify-between items-center rounded-b-4xl">
                 <section>
-                    <p>Welcome Blend</p>
+                    <p>{welcomeMessage}</p>
                     <div className="flex gap-2">
                       <span className="text-[10px] text-bold border border-[#f1f0f5] bg-[#f1f0f5] badge-card rounded-2xl capitalize">
-                        welcome
-                      </span>
-                      <span className="text-[10px] text-bold border border-[#f1f0f5] badge-card rounded-2xl capitalize">
-                        friendly
+                        {tone}
                       </span>
                     </div>
                 </section>
