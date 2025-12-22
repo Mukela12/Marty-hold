@@ -79,13 +79,19 @@ const SelectTemplates = () => {
             ...postgridMetaData.editorData,
             pages: postgridMetaData.editorData.pages.map(page => ({
               ...page,
-              children: page.children.map(child => ({
-                ...child,
-                text: postgridTextReplace(child.text, brand)
-              }))
+              children: page.children.map(child =>
+                child.type === "text"
+                  ? {
+                      ...child,
+                      text: postgridTextReplace(child.text, brand),
+                      fill: textColor
+                    }
+                  : child
+              )
             }))
           }
         };
+        
 
         return {
           ...template,
@@ -185,6 +191,7 @@ const SelectTemplates = () => {
             
             // localStorage.setItem('campaignSelectedTemplate', JSON.stringify(selectedTemplate));
             localStorage.setItem('currentCampaignStep', '3');
+            localStorage.setItem('postgrid-template-id', data?.data?.id);
             
             toast.success('Template saved!', { id: 'save-template' });
             navigate('/campaign/step3');

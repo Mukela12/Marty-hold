@@ -245,7 +245,7 @@ const handleToggleEdit = (e) => {
       </motion.button>
       <main>
         <section className="text-center mb-12">
-          <div className="inline-flex items-center gap-2 px-5 py-5s rounded-full p-2 bg-[#3b82f610] text-[#3b82f6] text-sm font-semibold mb-6">
+          <div className="inline-flex items-center gap-2 px-5 py-5s rounded-full p-2 bg-[#79d1cc] text-white text-sm font-semibold mb-6">
             <Zap className="w-4 h-4" />
             Step 1 of 4 • Brand Setup
           </div>
@@ -262,7 +262,7 @@ const handleToggleEdit = (e) => {
           <div className="relative overflow-hidden rounded-3xl border-2 border-[#cfc8f7] card-gradient p-8">
             <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
             <div className="flex items-center badge-text gap-4 mb-6">
-              <div className="w-16 h-16 rounded-2xl gradient-primary flex items-center justify-center shadow-glow">
+              <div className="w-16 h-16 rounded-2xl bg-[#79d1cc] flex items-center justify-center shadow-glow">
                 <Sparkles className="w-8 h-8 text-white" />
               </div>
               <div>
@@ -349,8 +349,8 @@ const handleToggleEdit = (e) => {
                 disabled={!formData.website || localIsFetching}
                 className={`btn text-white flex items-center justify-center h-[2.5rem] min-w-[180px] ${
                   fetchSuccess 
-                    ? "bg-green-500 hover:bg-green-600" 
-                    : "bg-[#bf92f0]"
+                    ? "bg-[#79d1cc]" 
+                    : "bg-[#79d1cc]"
                 } disabled:opacity-50 disabled:cursor-not-allowed h-14 px-8 rounded-xl text-base font-bold gap-3`}
               >
                 {localIsFetching ? (
@@ -374,7 +374,7 @@ const handleToggleEdit = (e) => {
             <div className="flex flex-wrap gap-4 mt-6">
               {['Logo', 'Brand Colors', 'Business Name', 'Category', 'Phone', 'Address', 'Email'].map((item) => (
                 <div key={item} className="flex items-center gap-2 badge-text text-sm text-muted-foreground">
-                  <div className="w-2 h-2 rounded-full bg-[#9f8ff2]" />
+                  <div className="w-2 h-2 rounded-full bg-[#79d1cc]" />
                   {item}
                 </div>
               ))}
