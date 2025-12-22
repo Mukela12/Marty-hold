@@ -176,7 +176,7 @@ export const BrandDevProvider = ({ children }) => {
       }
 
       if (response.status === "ok" && response.brand) {
-
+        setApiResponse(response);
         const mapped = mapBrandData(response, website, dbResponse?.[0]?.id, aiSuggestedCategory);
         setMappedData(mapped);
         setFetchSuccess(true);

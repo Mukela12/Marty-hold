@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ProcessLayout from '../../../../components/process/ProcessLayout';
 import PreviewCards from '../../../../components/campaign/PreviewCards';
 import {useBrandDev} from '../../../../contexts/BrandDevContext.jsx'
-import { Layout, Wand2, Check } from "lucide-react";
+import { Layout, Wand2, Check, Loader2 } from "lucide-react";
 import { supabase } from '../../../../supabase/integration/client';
 import campaignService from '../../../../supabase/api/campaignService.js';
 import "./selectTemplate.css";
@@ -17,12 +17,15 @@ const SelectTemplates = () => {
     const [templates, setTemplates] = useState([]);
     const [selectedTemplateId, setSelectedTemplateId] = useState(null);
     const [ selectedTemplate, setIsSelectedTemplate ] = useState({});
+    const [aiResponse, setAiResponse] = useState(null);
+    const [loading, setLoading] = useState(true); // Add loading state
+    const [aiScores, setAiScores] = useState({}); // Store AI scores
 
     // brand.dev data
     const { mappedData: brand, apiResponse } = useBrandDev();    
 
     useEffect(() => {
-      getTemplates();
+      initializeTemplates();
     }, []);
 
     /* Get templates from the supabase */
@@ -31,18 +34,63 @@ const SelectTemplates = () => {
         const { data, error } = await supabase
         .from("master_campaign")
         .select("*");
+
+        if(error){
+          throw new Error("Error in getting templates")
+        }
         
         /* brand.dev */
-        if(data.length) {
-          const UpdatedTemplates = data.map((template) => {
-            /* postgrid templates */
-            return dynamicTemplate(template);
-          });
-          setTemplates(UpdatedTemplates);
-        };
+        return data.length>0 ? data : []
       } catch (error) {
         console.error(error?.stack)
       };
+    };
+
+    const getAiSuggestionsForTemplates = async (templatesData)=>{
+      try {
+        if(!apiResponse){
+          throw new Error("No details about brand")
+        }
+        const {brand}= apiResponse;
+        const {data, error}= await supabase.functions.invoke('open-ai-templates-suggestion',{
+          body: { brand, templates:templatesData },
+        })
+        if(error){
+          throw new Error("Error in getting Ai suggestions")
+        }
+
+        setAiResponse(JSON.parse(data.data));
+        return JSON.parse(data.data)
+      } catch (error) {
+          toast.error(`Error ${error?.message? error?.message: "Error in getting Ai suggestions"}`)
+      }
+    }
+
+    const initializeTemplates = async () => {
+      try {
+        setLoading(true);
+        // Step 1: Get templates from database
+        const templatesData = await getTemplates();
+        if(!templatesData||templatesData.length==0){
+          throw new Error("Error in fetching the templates");
+        }
+          // Step 2: Get AI suggestions BEFORE template injection
+          const aiSuggestions = await getAiSuggestionsForTemplates(templatesData);
+          
+          // Step 3: Store AI scores and sort templates
+          const templatesWithScores = processAiScoresAndSort(templatesData, aiSuggestions);
+          
+          // Step 4: Now inject brand data into sorted templates
+          const processedTemplates = await injectBrandDataIntoTemplates(templatesWithScores);
+          
+          setTemplates(processedTemplates);
+          setAiResponse(aiSuggestions);
+        
+      } catch (error) {
+        toast.error("Failed to load templates");
+      } finally {
+        setLoading(false);
+      }
     };
 
     /* Dynamic Templates */
@@ -53,7 +101,6 @@ const SelectTemplates = () => {
 
         // Brand.dev Data's
         const { name, website, phone, colors } = brand;        
-        console.log(template.html);
         
         /* PostGrid HTML */
         const textColor =
@@ -96,11 +143,41 @@ const SelectTemplates = () => {
         return {
           ...template,
           html: DynamicTemplates,
-          meta_data: JSON.stringify(updatedMeta)
+          meta_data: JSON.stringify(updatedMeta),
+          aiScore: aiScores[template.template_id]?.score || 0,
         };
       } catch (error) {
         console.error(error);
       };
+    };
+
+    const processAiScoresAndSort = (templatesData, aiSuggestions) => {
+      
+      const scoresMap = {};
+      
+      if (aiSuggestions?.ranking) { 
+        aiSuggestions.ranking.forEach(item => {
+          scoresMap[item.templateId] = {
+            score: item.score || 0,
+            reason: item.reason || ''
+          };
+        });
+      } else {
+          throw new Error("No Ai ranking available for mapping the data")
+      }
+      
+      setAiScores(scoresMap);
+
+      const sortedTemplates = templatesData.map(item => ({
+        ...item,
+        score: scoresMap[item.template_id]?.score || 0 
+    }))
+    .sort((a, b) => b.score - a.score);
+      
+    return sortedTemplates;
+    };
+    const injectBrandDataIntoTemplates = async (templatesData) => {
+      return templatesData.map(template => dynamicTemplate(template));
     };
 
     /* replaceHelperMethod util */
@@ -199,24 +276,25 @@ const SelectTemplates = () => {
           };
           throw new Error('Failed to update campaign with template');
         } catch (error) {
-          console.error('Error updating campaign:', error);
           toast.error('Failed to save template. Please try again.', { id: 'save-template' });
         };
       };
     };
 
     return (
-        <React.Fragment>
+            <React.Fragment>
             <main>
-                {/* Header And Footer Layout */}
-                <ProcessLayout currentStep={2} totalSteps={totalSteps}
-                    // footerMessage={selectedTemplate
+                <ProcessLayout 
+                  currentStep={2} 
+                  totalSteps={totalSteps}
+                  // footerMessage={selectedTemplate
                     //     ? `Continue with ${selectedTemplate.description} template`
                     //     : "Please select a template before continuing to the editor"}
-                    onContinue={handleContinue}
-                    continueDisabled={!selectedTemplate}
-                    onSkip={() => navigate('/dashboard')}
-                    skipText="Cancel">
+                  onContinue={handleContinue}
+                  continueDisabled={!selectedTemplate}
+                  onSkip={() => navigate('/dashboard')}
+                  skipText="Cancel"
+                >
                   
                     {/* Hero Section */}
                     <section className="text-center m-6">
@@ -242,7 +320,7 @@ const SelectTemplates = () => {
                         </div>
                         <div>
                           <h2 className="font-bold text-foreground">
-                            {1} designs curated for {brand?.category && brand?.category}
+                            {loading ? 'AI is analyzing templates...' : 'AI-curated templates'}
                           </h2>
                           <p className="text-sm text-[#b5b0c3]">
                             Matching your brand colors and {brand?.category && brand?.category} category
@@ -251,31 +329,50 @@ const SelectTemplates = () => {
                       </div>
                     </div>
 
-                    {/* Cards */}
-                    <div className="grid post-card grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-9">
-                      {templates.map((template) => (
-                        <PreviewCards 
-                        key={template.template_id} 
-                        handleTemplateSelect={handleTemplateSelect}
-                        selectedTemplates={selectedTemplateId == template.template_id} 
-                        masterTemplate={template} />
-                      ))}
-                    </div>
+                    {/* Loading State */}
+                    {loading && (
+                      <div className="flex flex-col items-center justify-center py-12">
+                        <Loader2 className="w-8 h-8 text-[#4928ed] animate-spin mb-4" />
+                        <p className="text-lg text-[#b5b0c3]">
+                          AI is analyzing and sorting templates by relevance...
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Cards - Only show when not loading */}
+                    {!loading && (
+                      <div className="grid post-card grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-9">
+                        {templates.map((template) => (
+                          <PreviewCards 
+                            key={template.template_id} 
+                            handleTemplateSelect={handleTemplateSelect}
+                            selectedTemplates={selectedTemplateId == template.template_id} 
+                            masterTemplate={template}
+                            aiScore={template.score}
+                          />
+                        ))}
+                      </div>
+                    )}
 
                     {/* After Selection */}
-                    {selectedTemplateId && 
-                    <div className="p-4 selected after-select rounded-2xl bg-[#e3f2ee] border border-[#c4e8df] animate-scale-in">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-xl bg-[#bbe6d9] flex items-center justify-center">
-                          <Check className="w-6 h-6 text-[#23b987]" />
-                        </div>
-                        <div className="flex-1">
-                          <p className="font-bold text-foreground">selectedTemplatename</p>
-                          <p className="text-sm text-muted-foreground">Click Continue to customize this design with AI</p>
+                    {selectedTemplateId && !loading && (
+                      <div className="p-4 selected after-select rounded-2xl bg-[#e3f2ee] border border-[#c4e8df] animate-scale-in">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 rounded-xl bg-[#bbe6d9] flex items-center justify-center">
+                            <Check className="w-6 h-6 text-[#23b987]" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-bold text-foreground">Selected Template</p>
+                            {selectedTemplate?.aiScore > 0 && (
+                              <p className="text-sm text-muted-foreground">
+                                AI Relevance Score: {selectedTemplate.aiScore}/100
+                              </p>
+                            )}
+                            <p className="text-sm text-muted-foreground">Click Continue to customize this design with AI</p>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    }
+                    )}
                 </ProcessLayout>  
             </main>
         </React.Fragment>
