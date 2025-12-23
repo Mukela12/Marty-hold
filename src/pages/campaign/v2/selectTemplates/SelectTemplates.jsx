@@ -302,7 +302,7 @@ const SelectTemplates = () => {
                   
                     {/* Hero Section */}
                     <section className="text-center m-6">
-                        <div className="inline-flex items-center gap-2 px-5 py-5 rounded-full p-2 bg-[#ddd5f7] text-[#3b82f6] text-sm font-semibold mb-6">
+                        <div className="inline-flex items-center gap-2 px-5 py-5 rounded-full p-2 bg-[#d1efe8] text-[#16be9c] text-sm font-semibold mb-6">
                             <Layout className="w-4 h-4" />
                             Step 2 of 4 • Template Selection
                         </div>
@@ -311,15 +311,15 @@ const SelectTemplates = () => {
                         </h1>
                         <div className='flex justify-center'>
                             <p className="text-lg text-[#b5b0c3] max-w-2xl mx-auto">
-                                AI-curated designs for <span className="font-semibold text-[#4928ed]">{brand?.category && brand?.category}</span> based on your brand
+                                AI-curated designs for <span className="font-semibold text-[#2ac3a4]">{brand?.category && brand?.category}</span> based on your brand
                             </p>
                         </div>
                     </section>
 
                     {/* AI Banner */}
-                    <div className="p-4 rounded-2xl primary-gradient border border-[#c2b8f5]">
+                    <div className="p-4 rounded-2xl gradient-primary-accent border border-[#c7ede5]">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shadow-glow-sm">
+                        <div className="w-10 h-10 rounded-3xl bg-[#1bc7c2]  flex items-center justify-center shadow-glow-sm">
                           <Wand2 className="w-5 h-5 text-white" />
                         </div>
                         <div>

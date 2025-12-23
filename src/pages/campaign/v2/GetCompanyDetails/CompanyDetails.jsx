@@ -245,7 +245,7 @@ const handleToggleEdit = (e) => {
       </motion.button>
       <main>
         <section className="text-center mb-12">
-          <div className="inline-flex items-center gap-2 px-5 py-5s rounded-full p-2 bg-[#79d1cc] text-white text-sm font-semibold mb-6">
+          <div className="inline-flex items-center gap-2 px-5 py-5s rounded-full p-2 bg-[#d1efe8] text-[#16be9c] text-sm font-semibold mb-6">
             <Zap className="w-4 h-4" />
             Step 1 of 4 • Brand Setup
           </div>
@@ -259,7 +259,7 @@ const handleToggleEdit = (e) => {
           </div>
         </section>
         <section className='m-8'>
-          <div className="relative overflow-hidden rounded-3xl border-2 border-[#cfc8f7] card-gradient p-8">
+          <div className="relative overflow-hidden rounded-3xl border-2 border-[#e3ecea] card-gradient p-8">
             <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
             <div className="flex items-center badge-text gap-4 mb-6">
               <div className="w-16 h-16 rounded-2xl bg-[#79d1cc] flex items-center justify-center shadow-glow">
@@ -373,8 +373,8 @@ const handleToggleEdit = (e) => {
             </div>
             <div className="flex flex-wrap gap-4 mt-6">
               {['Logo', 'Brand Colors', 'Business Name', 'Category', 'Phone', 'Address', 'Email'].map((item) => (
-                <div key={item} className="flex items-center gap-2 badge-text text-sm text-muted-foreground">
-                  <div className="w-2 h-2 rounded-full bg-[#79d1cc]" />
+                <div key={item} className="flex items-center gap-2 badge-text text-sm text-[#677e7a]">
+                  <div className="w-2 h-2 rounded-full bg-[#39c6aa]" />
                   {item}
                 </div>
               ))}
@@ -496,7 +496,7 @@ const handleToggleEdit = (e) => {
         >
           {/* Brand Preview Card - Wrap in form */}
           <form onSubmit={handleSubmit(onSubmit)}>
-            <div className="relative overflow-hidden rounded-3xl border-2 border-[#cfc8f7] bg-linear-to-br from-white to-[#faf9ff] p-8 card-shadow">
+            <div className="relative overflow-hidden rounded-3xl border border-[#e3ecea] bg-linear-to-br from-white to-[#faf9ff] p-8 card-shadow">
               <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
               <div className="absolute top-4 right-4 flex gap-2 z-10">
                 <div className="flex gap-2">
@@ -605,7 +605,7 @@ const handleToggleEdit = (e) => {
                   className={`flex items-center gap-4 p-4 rounded-xl transition-all ${isEditing ? "bg-[#f0eeff] border-2 border-dashed border-[#cfc8f7]" : "bg-[#f9fafb] border border-[#e5e7eb]"}`}
                 >
                   <div className="w-10 h-10 rounded-xl bg-[#6366F1]/10 flex items-center justify-center shrink-0">
-                    <Edit2 className="w-5 h-5 text-[#6366F1]" />
+                    <Edit2 className="w-5 h-5 text-[#677e7a]" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs text-[#6b7280] font-medium mb-0.5">Business Name</p>
@@ -639,7 +639,7 @@ const handleToggleEdit = (e) => {
                   className={`flex items-center gap-4 p-4 rounded-xl transition-all ${isEditing ? "bg-[#f0eeff] border-2 border-dashed border-[#cfc8f7]" : "bg-[#f9fafb] border border-[#e5e7eb]"}`}
                 >
                   <div className="w-10 h-10 rounded-xl bg-[#6366F1]/10 flex items-center justify-center shrink-0">
-                    <Building2 className="w-5 h-5 text-[#6366F1]" />
+                    <Building2 className="w-5 h-5 text-[#677e7a]" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs text-[#6b7280] font-medium mb-0.5">Category</p>
@@ -677,7 +677,7 @@ const handleToggleEdit = (e) => {
                   className={`flex items-center gap-4 p-4 rounded-xl transition-all ${isEditing ? "bg-[#f0eeff] border-2 border-dashed border-[#cfc8f7]" : "bg-[#f9fafb] border border-[#e5e7eb]"}`}
                 >
                   <div className="w-10 h-10 rounded-xl bg-[#6366F1]/10 flex items-center justify-center shrink-0">
-                    <Globe className="w-5 h-5 text-[#6366F1]" />
+                    <Globe className="w-5 h-5 text-[#677e7a]" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs text-[#6b7280] font-medium mb-0.5">Website</p>
@@ -697,7 +697,7 @@ const handleToggleEdit = (e) => {
                   className={`flex items-center gap-4 p-4 rounded-xl transition-all ${isEditing ? "bg-[#f0eeff] border-2 border-dashed border-[#cfc8f7]" : "bg-[#f9fafb] border border-[#e5e7eb]"}`}
                 >
                   <div className="w-10 h-10 rounded-xl bg-[#6366F1]/10 flex items-center justify-center shrink-0">
-                    <MapPin className="w-5 h-5 text-[#6366F1]" />
+                    <MapPin className="w-5 h-5 text-[#677e7a]" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs text-[#6b7280] font-medium mb-0.5">Address</p>
@@ -725,7 +725,7 @@ const handleToggleEdit = (e) => {
                   className={`flex items-center gap-4 p-4 rounded-xl transition-all ${isEditing ? "bg-[#f0eeff] border-2 border-dashed border-[#cfc8f7]" : "bg-[#f9fafb] border border-[#e5e7eb]"}`}
                 >
                   <div className="w-10 h-10 rounded-xl bg-[#6366F1]/10 flex items-center justify-center shrink-0">
-                    <Phone className="w-5 h-5 text-[#6366F1]" />
+                    <Phone className="w-5 h-5 text-[#677e7a]" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs text-[#6b7280] font-medium mb-0.5">Phone</p>
@@ -752,7 +752,7 @@ const handleToggleEdit = (e) => {
                     )}
                   </div>
                   {!isEditing && brand?.phone && (
-                    <Check className="w-4 h-4 text-[#29ba8c] shrink-0" />
+                    <Check className="w-4 h-4 text-[#677e7a] shrink-0" />
                   )}
                 </div>
 
@@ -761,7 +761,7 @@ const handleToggleEdit = (e) => {
                   className={`flex items-center gap-4 p-4 rounded-xl transition-all ${isEditing ? "bg-[#f0eeff] border-2 border-dashed border-[#cfc8f7]" : "bg-[#f9fafb] border border-[#e5e7eb]"}`}
                 >
                   <div className="w-10 h-10 rounded-xl bg-[#6366F1]/10 flex items-center justify-center shrink-0">
-                    <Mail className="w-5 h-5 text-[#6366F1]" />
+                    <Mail className="w-5 h-5 text-[#677e7a]" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs text-[#6b7280] font-medium mb-0.5">Email</p>
@@ -797,7 +797,7 @@ const handleToggleEdit = (e) => {
                   className={`flex items-center gap-4 p-4 rounded-xl transition-all ${isEditing ? "bg-[#f0eeff] border-2 border-dashed border-[#cfc8f7]" : "bg-[#f9fafb] border border-[#e5e7eb]"}`}
                 >
                   <div className="w-10 h-10 rounded-xl bg-[#6366F1]/10 flex items-center justify-center shrink-0">
-                    <Palette className="w-5 h-5 text-[#6366F1]" />
+                    <Palette className="w-5 h-5 text-[#677e7a]" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs text-[#6b7280] font-medium mb-0.5">Brand Colors</p>
@@ -835,8 +835,8 @@ const handleToggleEdit = (e) => {
           </form>
 
           {/* Info Banner with Sparkles icon - Fixed spacing */}
-          <div className="flex items-center gap-4 p-4 rounded-xl bg-[#6366F1]/5 border border-[#6366F1]/20s" style={{ marginTop: "20px" }}>
-            <Sparkles className="w-5 h-5 text-[#6366F1] shrink-0" />
+          <div className="flex items-center gap-4 p-4 rounded-xl bg-[#6366F1]/5 border border-[#e3f5f1]" style={{ marginTop: "20px" }}>
+            <Sparkles className="w-5 h-5 text-[#677e7a] shrink-0" />
             <p className="text-sm text-[#6b7280]">
               <span className="font-semibold text-[#1f2937]">All information auto-detected!</span> Click Edit above if you need to make any adjustments before continuing.
             </p>

@@ -36,7 +36,7 @@ const PreviewCards = ({ className, size = "medium", masterTemplate, handleTempla
                 
               {/* Badge */}
               <div className="absolute top-4 right-4">
-                <span className="gradient-primary inline-flex items-center gap-1 p-1 rounded-2xl text-white text-[8px]">
+                <span className="gradient-primary-accent bg-[#1cc9c8] inline-flex items-center gap-1 p-1 rounded-2xl text-white text-[8px]">
                   <Star className="w-3 h-3" />
                   Ai Ratings : {`${aiScore}%`}
                 </span>

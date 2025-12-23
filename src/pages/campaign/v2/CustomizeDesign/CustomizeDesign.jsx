@@ -124,7 +124,7 @@ const CustomizeDesign = () => {
         <div>
         {/* Header */}
         <section className="text-center m-6">
-          <div className="inline-flex items-center gap-2 px-5 py-5 rounded-full p-2 bg-[#ddd5f7] text-[#3b82f6] text-sm font-semibold">
+          <div className="inline-flex items-center gap-2 px-5 py-5 rounded-full p-2 bg-[#d1efe8] text-[#16be9c] text-sm font-semibold">
             <Layout className="w-4 h-4" />
             Step 3 of 4 • Customize Postcard
           </div>
@@ -185,7 +185,7 @@ const CustomizeDesign = () => {
           </section>
           <section className='bg-white relative w-[60%]'>
               {/* Header */}
-              <div className="rounded-t-2xl bg-linear-to-r from-purple-600 to-violet-500 px-5 p-4 text-white">
+              <div className="rounded-t-2xl gradient-primary-ai px-5 p-4 text-white">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center">
                     <Sparkles className="w-5 h-5" />
@@ -211,7 +211,7 @@ const CustomizeDesign = () => {
               </div>
       
               {/* Suggestion Chips */}
-              <div className="flex flex-wrap gap-2">
+              <div className="flex text-[#57d0b7] flex-wrap gap-2">
                 <Suggestion text="Make headline more exciting" />
                 <Suggestion text="Change the offer" />
                 <Suggestion text="Different CTA options" />
@@ -226,7 +226,7 @@ const CustomizeDesign = () => {
                   placeholder="Ask AI to help refine your copy..."
                   className="flex-1 rounded-full border border-[#e0dfe8] p-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
                 />
-                <button className="w-10 h-10 rounded-full bg-purple-600 hover:bg-purple-700 flex items-center justify-center text-white">
+                <button className="w-10 h-10 rounded-full bg-[#57d0b7] hover:bg-purple-700 flex items-center justify-center text-white">
                   <Send className="w-4 h-4" />
                 </button>
               </div>
@@ -239,7 +239,7 @@ const CustomizeDesign = () => {
 
 function Suggestion({ text }) {
   return (
-    <button className="flex items-center gap-1 p-2 rounded-full text-xs bg-purple-50 text-purple-600 hover:bg-purple-100 transition">
+    <button className="flex items-center gap-1 p-2 rounded-full text-xs bg-purple-50 text-[#57d0b7] hover:bg-purple-100 transition">
       <Sparkles className="w-3 h-3" />
       {text}
     </button>
