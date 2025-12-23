@@ -139,6 +139,21 @@ async function getMasterMappingIndustry(masterIndustries,apiResponse){
 
 }
 
+async function getMasterCategoryDetails(){
+  try {
+    const {data , error}=await supabase
+    .from('master_categories')
+    .select('category')
+    .eq('status', true)
+    if( error){
+      throw new Error("Error in getting master Categories.")
+    }
+    return data.length > 0 ?data.map(item => item.category):[];
+  } catch (error) {
+    throw error;
+  }
+}
+
 
 export const BrandDevProvider = ({ children }) => {
   const [apiResponse, setApiResponse] = useState(null);
@@ -158,6 +173,7 @@ export const BrandDevProvider = ({ children }) => {
       if (userError || !user) {
         throw new Error('User not authenticated');
       }
+      const masterCategoriesDetails = await getMasterCategoryDetails();
       const dbResponse = await getCompanyDetails(website);
       
       let response = null;
@@ -165,13 +181,13 @@ export const BrandDevProvider = ({ children }) => {
 
       if (!dbResponse?.length) {
           response = await getBrandFetchApiDetails(website);
-          aiSuggestedCategory = await getMasterMappingIndustry(masterCategories,response);
+          aiSuggestedCategory = await getMasterMappingIndustry(masterCategoriesDetails,response);
           setCategoryAiSuggestion(aiSuggestedCategory);
           await insertCompanyDetails(response,website, user.id)
 
       } else {
           response = dbResponse[0]?.brandfetch_data ?? null;
-          aiSuggestedCategory = await getMasterMappingIndustry(masterCategories, response);
+          aiSuggestedCategory = await getMasterMappingIndustry(masterCategoriesDetails, response);
           setCategoryAiSuggestion(aiSuggestedCategory);
       }
 
