@@ -1,21 +1,34 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
-  Sparkles, Send, Loader2, Wand2, MessageSquare, Edit3, 
-  Type, Image, RefreshCw, Check, X,Layout, 
-  Lightbulb, MousePointerClick, ChevronDown
+  Sparkles, Send, Loader2, RefreshCw, X,Layout
 } from 'lucide-react';
 import { supabase } from '../../../../supabase/integration/client';
 import "./customizeDesign.css"
+import { useForm } from 'react-hook-form';
+import toast from 'react-hot-toast';
+import {useBrandDev} from '../../../../contexts/BrandDevContext.jsx'
+import { ChatMessage } from './ChatMessage.jsx';
+import { ChatLoading } from './ChatLoading.jsx';
 
 const CustomizeDesign = () => {
-  const [selectedTone, setSelectedTone] = useState('friendly');
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [contentGenerated, setContentGenerated] = useState(false);
-  const [chatMessages, setChatMessages] = useState([]);
-  const [chatInput, setChatInput] = useState('');
-  const [selectedElement, setSelectedElement] = useState(null);
-  const [editorReady, setEditorReady] = useState(false);
   const [ editorUrl, setEditorUrl ] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [chatMessages, setChatMessages] = useState([]);
+  const chatContainerRef = useRef(null);
+
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { isSubmitting }
+  } = useForm({
+    defaultValues: {
+      message: ''
+    }
+  });
+
+  const { mappedData: brand, apiResponse } = useBrandDev();
 
   // Simulate PostGrid editor loading
   useEffect(() => {
@@ -25,6 +38,77 @@ const CustomizeDesign = () => {
         getPostGridEditorSession(templateId);
   }, []);
 
+  useEffect(() => {
+    if (chatMessages.length === 0) {
+      setChatMessages([{
+        role: 'ai',
+        text: "Hello! I'm your AI design assistant. I can help you refine your postcard content. What would you like to change or improve?",
+        suggestions: null,
+        onSuggestionClick: handleSuggestionClick
+      }]);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+  }, [chatMessages]);
+
+  const processAIResponse = (response) => {
+    const parsedResponse = JSON.parse(response?.data || response);
+    
+    if (parsedResponse.metadata.request_type === "out_of_scope") {
+      return {
+        text: parsedResponse.usage_recommendations.join('\n'),
+        suggestions: null,
+        transformations: null
+      };
+    } else {
+      const transformations = parsedResponse.transformations?.flatMap(item => 
+        item.transformations?.map(trans => ({
+          text: trans.text,
+          version: trans.version,
+          brand_basis: trans.brand_basis,
+          marketing_principle: trans.marketing_principle,
+          semantic_integrity: trans.semantic_integrity
+        }))
+      ).filter(Boolean) || [];
+
+      const suggestions = transformations.length > 0 
+        ? transformations.map(t => t.text).slice(0, 3)
+        : ['Try different wording', 'Make it more engaging', 'Adjust the tone'];
+
+      return {
+        text: parsedResponse.usage_recommendations?.join('\n') || "Here are some options based on your brand:",
+        suggestions: suggestions,
+        transformations: transformations
+      };
+    }
+  };
+
+  const handleSuggestionClick = (suggestionText) => {
+    setChatMessages(prev => [...prev, {
+      role: 'ai',
+      text: `Applied: "${suggestionText}"`,
+      suggestions: null,
+      transformations: null
+    }]);
+    
+    // onUpdateContent({ [selectedElement]: suggestionText });
+  };
+
+  const handleTransformationClick = (transformationText) => {
+    setChatMessages(prev => [...prev, {
+      role: 'ai',
+      text: `Perfect! I've selected: "${transformationText}"`,
+      suggestions: null,
+      transformations: null
+    }]);
+    
+    // onUpdateContent({ [selectedElement]: transformationText });
+  };
+
     async function getPostGridEditorSession(templateId) {
         try {
             const { data, error } = await supabase.functions.invoke("postgrid-editor-session", {
@@ -32,90 +116,60 @@ const CustomizeDesign = () => {
                     templateId: templateId
                 }
             });
+            if(error){
+              throw new Error("Error in implementing the editor flow")
+            }
             setEditorUrl(data?.postGridResponse?.url)
         } catch (error) {
-            console.error(error);
+            toast.error(error.message)
         };
     };
 
-  const toneOptions = [
-    { value: 'friendly', label: 'Friendly & Warm' },
-    { value: 'premium', label: 'Premium & Elegant' },
-    { value: 'playful', label: 'Playful & Fun' },
-    { value: 'urgent', label: 'Urgent & Direct' },
-    { value: 'professional', label: 'Professional' },
-  ];
-
-  const handleGenerateContent = async () => {
-    setIsGenerating(true);
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    const generatedContent = {
-      headline: `Free Coffee On Us!`,
-      offerText: `New to the neighborhood? Stop by and enjoy a complimentary small coffee with any pastry purchase. Great Staff, Delicious Pastries, Cozy Atmosphere.`,
-      cta: `Bring this postcard to redeem`,
-      tagline: `"Welcome to the neighborhood!"`,
-    };
-    
-    onUpdateContent(generatedContent);
-    setIsGenerating(false);
-    setContentGenerated(true);
-    
-    // Initial AI message
-    setChatMessages([{
-      role: 'ai',
-      text: `Perfect! I've generated content for your ${business.name || 'business'} postcard. The design is ready for you to customize.\n\nClick any element on the postcard to select it, or ask me to help refine the copy.`,
-      suggestions: ['Make headline more exciting', 'Change the offer', 'Different CTA options']
-    }]);
-  };
-
-  const handleChatSubmit = async () => {
-    if (!chatInput.trim()) return;
-    
-    const userMessage = chatInput;
-    setChatMessages(prev => [...prev, { role: 'user', text: userMessage }]);
-    setChatInput('');
-    
-    await new Promise(resolve => setTimeout(resolve, 1200));
-    
-    let aiResponse = { role: 'ai', text: '' };
-    
-    if (userMessage.toLowerCase().includes('headline')) {
-      aiResponse = {
+    const onChatSubmit = async (userData) => {
+    try {
+      if (!userData.message.trim()) return;
+      
+      const userMessage = { role: 'user', text: userData.message.trim() };
+      setChatMessages(prev => [...prev, userMessage]);
+      
+      reset();
+      
+      if (!apiResponse?.brand) {
+        throw new Error("No details about brand");
+      }
+      
+      setIsLoading(true);
+      const { data, error } = await supabase.functions.invoke("open-ai-post-editor-area", {
+        body: { brand: apiResponse.brand, content: userData.message },
+      });
+      
+      if (error) {
+        throw new Error("Error in getting the AI suggestion");
+      }
+      
+      const aiResponseData = processAIResponse(data);
+      const aiMessage = {
         role: 'ai',
-        text: 'Here are 3 headline options:\n\n1. "Your First Cup is On Us!"\n2. "Welcome Home, Coffee Lover!"\n3. "Start Your Day the Right Way"',
-        suggestions: ['Your First Cup is On Us!', 'Welcome Home, Coffee Lover!', 'Start Your Day Right']
+        text: aiResponseData.text,
+        suggestions: null,
+        transformations: aiResponseData.transformations,
+        onSuggestionClick: handleSuggestionClick,
+        onTransformationClick: handleTransformationClick
       };
-    } else if (userMessage.toLowerCase().includes('cta') || userMessage.toLowerCase().includes('button')) {
-      aiResponse = {
+      
+      setChatMessages(prev => [...prev, aiMessage]);
+      
+    } catch (error) {
+      console.error("Error:", error);
+      toast.error("Failed to get AI response");
+      setChatMessages(prev => [...prev, {
         role: 'ai',
-        text: 'Here are some call-to-action options:\n\n1. "Redeem this card for your free coffee"\n2. "Show this postcard & claim your treat"\n3. "Visit us today!"',
-        suggestions: ['Redeem Now', 'Claim Your Treat', 'Visit Us Today']
-      };
-    } else if (userMessage.toLowerCase().includes('offer')) {
-      aiResponse = {
-        role: 'ai',
-        text: 'I can adjust your offer! What would you prefer?\n\n• Free item (coffee, pastry, etc.)\n• Percentage discount (10%, 20%)\n• Buy one get one free',
-        suggestions: ['20% Off First Order', 'Free Pastry', 'Buy 1 Get 1 Free']
-      };
-    } else {
-      aiResponse = {
-        role: 'ai',
-        text: `I can help you refine any part of your postcard. Try:\n\n• "Make the headline more exciting"\n• "Give me 3 CTA options"\n• "Change the offer to 20% off"`,
-        suggestions: ['Improve headline', 'Change CTA', 'Adjust offer']
-      };
-    }
-    
-    setChatMessages(prev => [...prev, aiResponse]);
-  };
-
-  const handleSuggestionClick = (suggestion) => {
-    if (suggestion.length < 30) {
-      onUpdateContent({ headline: suggestion });
-      setChatMessages(prev => [...prev, { 
-        role: 'ai', 
-        text: `Great choice! I've updated the headline to "${suggestion}". What else would you like to change?` 
+        text: "Sorry, I encountered an error. Please try again.",
+        suggestions: null,
+        transformations: null
       }]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -183,54 +237,73 @@ const CustomizeDesign = () => {
               </main>
             </div>
           </section>
-          <section className='bg-white relative w-[60%]'>
-              {/* Header */}
-              <div className="rounded-t-2xl gradient-primary-ai px-5 p-4 text-white">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center">
-                    <Sparkles className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold leading-tight">AI Chat Assistant</h3>
-                    <p className="text-xs opacity-90">Ask me to refine your copy</p>
-                  </div>
+          <section className='bg-white rounded-2xl border border-gray-200 shadow-sm relative w-full max-w-md flex flex-col h-[600px]'>
+            {/* Header */}
+            <div className="rounded-t-2xl gradient-primary-ai px-5 p-4 text-white flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center">
+                  <Sparkles className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-base">AI Chat Assistant</h3>
+                  <p className="text-xs opacity-90">Ask me to refine your copy</p>
                 </div>
               </div>
-        
-              {/* Messages */}
-              <div className="flex-1 p-4 space-y-4 overflow-y-auto bg-gray-50">
-              <div className="bg-gray-100 rounded-xl p-4 text-sm text-gray-700">
-                <p>
-                  Perfect! I've generated content for your Brew & Bean Coffee postcard.
-                  The design is ready for you to customize.
-                </p>
-                <p className="mt-2">
-                  Click any element on the postcard to select it, or ask me to help
-                  refine the copy.
-                </p>
-              </div>
-      
-              {/* Suggestion Chips */}
-              <div className="flex text-[#57d0b7] flex-wrap gap-2">
-                <Suggestion text="Make headline more exciting" />
-                <Suggestion text="Change the offer" />
-                <Suggestion text="Different CTA options" />
-              </div>
-              </div>
-      
-            {/* Input */}
-            <div className="p-4 border-t absolute w-full bottom-0 bg-gray-50">
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  placeholder="Ask AI to help refine your copy..."
-                  className="flex-1 rounded-full border border-[#e0dfe8] p-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-                <button className="w-10 h-10 rounded-full bg-[#57d0b7] hover:bg-purple-700 flex items-center justify-center text-white">
-                  <Send className="w-4 h-4" />
-                </button>
+            </div>
+
+            {/* Chat Messages Container */}
+            <div 
+              ref={chatContainerRef}
+              className="flex-1 p-4 overflow-y-auto bg-gray-50 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent"
+            >
+              <div className="space-y-4">
+                {chatMessages.map((message, index) => (
+                  <ChatMessage key={index} message={message} />
+                ))}
+                
+                {isLoading && <ChatLoading />}
               </div>
             </div>
+
+            {/* Input Form */}
+            <form 
+              onSubmit={handleSubmit(onChatSubmit)} 
+              className="p-4 border-t border-gray-200 bg-white rounded-b-2xl flex-shrink-0"
+            >
+              <div className="relative">
+                <textarea
+                  placeholder="Type your message here..."
+                  className="w-full rounded-xl border border-gray-300 px-4 py-3.5 pr-12 text-sm focus:outline-none focus:ring-2 focus:ring-[#57d0b7] focus:border-transparent placeholder:text-gray-400 bg-gray-50 resize-none min-h-[44px] max-h-[120px]"
+                  {...register('message', { required: true })}
+                  disabled={isSubmitting || isLoading}
+                  rows={1}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSubmit(onChatSubmit)();
+                    }
+                  }}
+                  onInput={(e) => {
+                    e.target.style.height = 'auto';
+                    e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
+                  }}
+                />
+                <button 
+                  type="submit"
+                  disabled={isSubmitting || isLoading}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-gradient-to-r from-[#57d0b7] to-[#16be9c] hover:opacity-90 flex items-center justify-center text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+                >
+                  {isLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Send className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
+              <p className="text-xs text-gray-500 mt-3 text-center">
+                Press <span className="font-semibold">Enter</span> to send • <span className="font-semibold">Shift+Enter</span> for new line
+              </p>
+            </form>
           </section>
         </main>
       </div>
