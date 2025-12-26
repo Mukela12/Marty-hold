@@ -22,7 +22,7 @@ Deno.serve(async (req: any) => {
     const { templateId } = body;
 
     /* Get Env */
-    const SECRET_API_KEY = Deno.env.get('VITE_POSTGRID_KEY');
+    const SECRET_API_KEY = Deno.env.get('POSTGRID_API_KEY');    
     
     /* Get Templates From The Postgrid API */
     const response = await fetch(`${Deno.env.get('VITE_POSTGRID_URL')}/templates/${templateId}`, {

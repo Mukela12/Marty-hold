@@ -335,7 +335,7 @@ const SelectTemplates = () => {
 
                     {/* Loading State */}
                     {loading && (
-                      <div className="flex flex-col items-center justify-center py-12">
+                      <div className="flex flex-col items-center justify-center pt-12 mb-12">
                         <Loader2 className="w-8 h-8 text-[#4928ed] animate-spin mb-4" />
                         <p className="text-lg text-[#b5b0c3]">
                           AI is analyzing and sorting templates by relevance...

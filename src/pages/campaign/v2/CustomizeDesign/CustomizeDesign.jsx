@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Sparkles, Send, Loader2, Wand2, MessageSquare, Edit3, 
-  Type, Image, RefreshCw, Check, X,Layout, 
-  Lightbulb, MousePointerClick, ChevronDown
+  Sparkles, Send, Layout, 
 } from 'lucide-react';
 import { supabase } from '../../../../supabase/integration/client';
 import "./customizeDesign.css"
+import PostGridEditor from '../../../../components/campaign/PostGridEditor';
 
 const CustomizeDesign = () => {
   const [selectedTone, setSelectedTone] = useState('friendly');
@@ -141,47 +140,10 @@ const CustomizeDesign = () => {
         {/* AI Content Generation - Show before editor */}
 
         {/* Editor + AI Chat Layout - Postcard takes more space */}
-        <main className='flex gap-10'>
-          <section className="w-full max-w-[890px]">
+        <main className='flex gap-5'>
+          <section className="w-475">
             {/* Editor Card */}
-            <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
-
-              {/* Header */}
-              <div className="flex items-center justify-between px-6 py-4 border-b">
-                <div className="flex items-center gap-2">
-                  <span className="flex items-center gap-2 postgrid-badge rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
-                    <Sparkles className="w-3.5 h-3.5" />
-                    PostGrid Editor
-                  </span>
-                </div>
-
-                <button className="flex cursor-pointer regenerate-btn items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900">
-                  <RefreshCw className="w-4 h-4" />
-                  Regenerate
-                </button>
-              </div>
-
-              {/* Editor Canvas */}
-              <main className="p-6">
-                <section className="relative rounded-2xl bg-gray-50">
-                  {/* Postcard Preview */}
-                  <div className="overflow-hidden aspect-3/2 rounded-xl bg-black shadow-lg flex items-center justify-center">
-                    <iframe
-                      src={editorUrl}
-                      title="PostGrid Template Editor"
-                      className="w-full h-full"
-                      id="postgrid-editor"
-                    ></iframe>
-                  </div>
-
-                  {/* Footer hint */}
-                  <div className="postgrid-footer flex items-center justify-center gap-2 text-xs text-gray-500">
-                    <Sparkles className="w-3 h-3" />
-                    Click any element to select it for editing
-                  </div>
-                </section>
-              </main>
-            </div>
+            <PostGridEditor postGridUrl={editorUrl} />
           </section>
           <section className='bg-white relative w-[60%]'>
               {/* Header */}
