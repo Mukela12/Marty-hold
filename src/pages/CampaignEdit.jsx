@@ -8,6 +8,8 @@ import FabricEditor from '../components/PostcardEditor/FabricEditor';
 import campaignService from '../supabase/api/campaignService';
 import newMoverService from '../supabase/api/newMoverService';
 import toast from 'react-hot-toast';
+import CampaignPostGridEdit from '../components/PostcardEditor/CampaignPostGridEdit';
+import { supabase } from '../supabase/integration/client';
 
 const CampaignEdit = () => {
   const navigate = useNavigate();
@@ -18,6 +20,7 @@ const CampaignEdit = () => {
   const [isEditingPostcard, setIsEditingPostcard] = useState(false);
   const [zipValidation, setZipValidation] = useState(null);
   const [isValidatingZips, setIsValidatingZips] = useState(false);
+  const [postGridTemplate, setPostGridTemplate] = useState("");
 
   const [formData, setFormData] = useState({
     campaign_name: '',
@@ -28,6 +31,30 @@ const CampaignEdit = () => {
     loadCampaign();
   }, [campaignId]);
 
+
+  /* get postgrid template preview */
+  const getPostGridTemplate = async (templateId) => {
+    try {
+      // handle templateid error
+      if(!templateId) return toast.error("Template ID is missing or invalid.");
+      
+      // get the template data from the postgrid
+      const { data } = await supabase.functions.invoke("get-postgrid-templates", {
+        body: {
+          templateId
+        }
+      });
+
+      // Template Response
+      if(data.success) {
+        const { data: templateResponse } = data;
+        setPostGridTemplate(templateResponse);
+      };
+    } catch (error) {
+      toast.error("Failed to retrieve the PostGrid preview URL.")  
+    };
+  };
+
   const loadCampaign = async () => {
     try {
       setIsLoading(true);
@@ -35,6 +62,10 @@ const CampaignEdit = () => {
 
       if (result.success && result.campaign) {
         setCampaign(result.campaign);
+        
+        /* get template from the postgrid editor */;
+        await getPostGridTemplate(result?.campaign?.template_id);
+
         setFormData({
           campaign_name: result.campaign.campaign_name || '',
           target_zip_codes: (result.campaign.target_zip_codes || []).join(', ')
@@ -207,12 +238,13 @@ const CampaignEdit = () => {
     return (
       <DashboardLayout>
         <div className="campaign-edit-page-editor">
-          <FabricEditor
+          {/* <FabricEditor
             selectedTemplate={templateData}
             onBack={handleCloseEditor}
             onSave={handleSavePostcard}
             campaignId={campaignId}
-          />
+          /> */}
+          <CampaignPostGridEdit template={postGridTemplate?.id} />
         </div>
       </DashboardLayout>
     );
@@ -359,15 +391,10 @@ const CampaignEdit = () => {
                 </motion.button>
               </div>
               <div className="preview-container">
-                {campaign.postcard_preview_url ? (
-                  <motion.img
-                    src={campaign.postcard_preview_url}
-                    alt="Postcard preview"
-                    className="preview-image"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.3 }}
-                  />
+                {postGridTemplate?.html ? (
+                  <iframe srcDoc={postGridTemplate?.html} 
+                  className="w-150 h-102 border-0 block rounded-t-[5rem]"
+                  title="PostGrid Preview"></iframe>
                 ) : (
                   <div className="preview-placeholder">
                     <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
@@ -621,7 +648,6 @@ const CampaignEdit = () => {
           background: #F7FAFC;
           border: 2px dashed #E2E8F0;
           border-radius: 8px;
-          padding: 24px;
           display: flex;
           align-items: center;
           justify-content: center;

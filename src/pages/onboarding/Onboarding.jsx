@@ -6,12 +6,13 @@ import OnboardingStep4 from './OnboardingStep4';
 import OnboardingStep5 from './OnboardingStep5';
 import OnboardingStep6 from './OnboardingStep6';
 import CampaignStep1 from '../campaign/v2/GetCompanyDetails/CompanyDetails';
+import TargetAudience from '../campaign/v2/TargetAudience/TargetAudience';
 
 const Onboarding = () => {
   return (
     <Routes>
       <Route path="/" element={<Navigate to="step1" replace />} />
-      <Route path="step1" element={<CampaignStep1 />} />
+      <Route path="step1" element={<TargetAudience />} />
       <Route path="step2" element={<OnboardingStep2Enhanced />} />
       <Route path="step3" element={<OnboardingStep3Enhanced />} />
       <Route path="step4" element={<OnboardingStep4 />} />
