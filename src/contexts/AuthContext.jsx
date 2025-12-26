@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react'
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import supabaseAuthService from '../supabase/api/authService'
@@ -24,9 +24,20 @@ export const AuthProvider = ({ children }) => {
   const [onboardingLoading, setOnboardingLoading] = useState(false)
   const navigate = useNavigate()
 
-  // Check onboarding status
+  // Ref to prevent duplicate onboarding status checks
+  const isCheckingOnboarding = useRef(false)
+  // Ref to track if auth has been initialized (prevents redundant onboarding checks)
+  const authInitialized = useRef(false)
+
+  // Check onboarding status with debouncing
   const checkOnboardingStatus = async () => {
+    // Prevent duplicate calls
+    if (isCheckingOnboarding.current) {
+      return null
+    }
+
     try {
+      isCheckingOnboarding.current = true
       setOnboardingLoading(true)
       const status = await supabaseOnboardingService.getOnboardingStatus()
 
@@ -39,6 +50,7 @@ export const AuthProvider = ({ children }) => {
       return null
     } finally {
       setOnboardingLoading(false)
+      isCheckingOnboarding.current = false
     }
   }
 
@@ -56,6 +68,7 @@ export const AuthProvider = ({ children }) => {
 
           // Load onboarding status for authenticated user
           await checkOnboardingStatus()
+          authInitialized.current = true
         }
       } catch (error) {
         console.error('Error initializing auth:', error)
@@ -68,22 +81,56 @@ export const AuthProvider = ({ children }) => {
 
     // Listen to auth state changes
     const { data: { subscription } } = supabaseAuthService.onAuthStateChange(
-      async (event, session) => {
-        console.log('Auth state change:', event, session)
+      async (event, newSession) => {
+        console.log('Auth state change:', event, newSession?.user?.id || 'no session')
 
-        if (session) {
-          setSession(session)
-          setUser(session.user)
+        // Filter events: Only respond to meaningful auth events
+        // Ignore TOKEN_REFRESHED to prevent reload-like behavior on tab switching
+        const meaningfulEvents = ['SIGNED_IN', 'SIGNED_OUT', 'USER_UPDATED', 'INITIAL_SESSION']
+        const shouldProcess = meaningfulEvents.includes(event)
+
+        if (!shouldProcess) {
+          console.log('Ignoring auth event:', event)
+          return
+        }
+
+        if (newSession) {
+          // SESSION COMPARISON: Prevent duplicate processing of the same session
+          const currentAccessToken = session?.access_token
+          const newAccessToken = newSession.access_token
+          const currentUserId = session?.user?.id
+          const newUserId = newSession.user?.id
+
+          // If the session hasn't actually changed, skip processing
+          if (currentAccessToken === newAccessToken && currentUserId === newUserId) {
+            console.log('Session unchanged (same token & user), skipping update')
+            return
+          }
+
+          // Session has changed or is new - update state
+          console.log('Processing new/changed session')
+          setSession(newSession)
+          setUser(newSession.user)
           setIsAuthenticated(true)
 
-          // Load onboarding status when user logs in
-          await checkOnboardingStatus()
+          // Only check onboarding on fresh sign-in (not on session rehydration)
+          // authInitialized tracks if we've already loaded onboarding for this auth session
+          if (!authInitialized.current) {
+            console.log('First auth initialization, checking onboarding status')
+            await checkOnboardingStatus()
+            authInitialized.current = true
+          } else {
+            console.log('Auth already initialized, skipping onboarding check')
+          }
         } else {
+          // Sign out
+          console.log('User signed out, clearing auth state')
           setSession(null)
           setUser(null)
           setIsAuthenticated(false)
           setOnboardingCompleted(false)
           setCurrentOnboardingStep(1)
+          authInitialized.current = false
         }
 
         setLoading(false)

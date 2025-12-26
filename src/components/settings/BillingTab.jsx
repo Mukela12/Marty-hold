@@ -11,7 +11,7 @@ import './BillingTab.css';
 
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
-const BillingTab = () => {
+const BillingTab = ({ activeTab }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingPortal, setIsLoadingPortal] = useState(false);
   const [zipAggregation, setZipAggregation] = useState(null);
@@ -31,8 +31,14 @@ const BillingTab = () => {
 
   useEffect(() => {
     loadZipCodeAggregation();
-    loadPaymentMethods();
   }, []);
+
+  // Refresh payment methods when tab becomes active
+  useEffect(() => {
+    if (activeTab === 'Billing') {
+      loadPaymentMethods();
+    }
+  }, [activeTab]);
 
   const loadPaymentMethods = async () => {
     try {
@@ -89,7 +95,6 @@ const BillingTab = () => {
       if (result.success) {
         toast.success('Payment method removed');
         loadPaymentMethods();
-        checkPaymentMethodStatus();
       } else {
         toast.error(result.error || 'Failed to remove payment method');
       }
@@ -247,7 +252,7 @@ const BillingTab = () => {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
-              <Plus size={18} />
+              <Plus size={18} strokeWidth={2.5} />
               Add Card
             </motion.button>
           )}
@@ -271,7 +276,7 @@ const BillingTab = () => {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  <Plus size={18} />
+                  <Plus size={18} strokeWidth={2.5} />
                   Add Payment Method
                 </motion.button>
               </div>
@@ -358,7 +363,6 @@ const BillingTab = () => {
                       onSuccess={() => {
                         setShowAddCard(false);
                         loadPaymentMethods();
-                        checkPaymentMethodStatus();
                       }}
                       onCancel={() => setShowAddCard(false)}
                     />
@@ -922,8 +926,8 @@ const AddPaymentMethodForm = ({ onSuccess, onCancel }) => {
 
       console.log('[BillingTab] Starting payment method addition...');
 
-      // Create SetupIntent
-      const result = await paymentService.savePaymentMethod(cardElement);
+      // ✅ FIX: Pass stripe instance to service
+      const result = await paymentService.savePaymentMethod(stripe, cardElement);
 
       console.log('[BillingTab] Payment method result:', result);
 

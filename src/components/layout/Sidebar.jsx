@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Home, Clock, Settings, ChevronDown, LogOut } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import Avatar from '../ui/Avatar';
+import NotificationBell from '../common/NotificationBell';
 import { cn } from '../../utils/cn';
 import './Sidebar.css';
 
@@ -47,6 +48,12 @@ const Sidebar = () => {
             <p className="text-xs text-gray-500 font-medium">Postcard Platform</p>
           </div>
         </div>
+        {/* <img
+          src="/movepost-logo.png"
+          alt="MovePost"
+          className="sidebar-logo"
+        />
+        <NotificationBell /> */}
       </div>
 
       {/* Navigation Menu */}

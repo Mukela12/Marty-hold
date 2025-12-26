@@ -1,7 +1,41 @@
 import { supabase } from "../integration/client";
 import { dollarsToCents } from "../../utils/pricing";
+import Stripe from "stripe";
+
+const stripekey = new Stripe(import.meta.env.VITE_STRIPE_SECRET_KEY);
 
 export const paymentService = {
+  /**
+   * Create a customer record in Stripe and database (lightweight, no payment intent)
+   * This is faster than createSetupIntent and should be used when only customer creation is needed
+   * @returns {Promise<Object>} Customer data (customerId, stripeCustomerId)
+   */
+  async createCustomerRecord() {
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session) {
+      throw new Error('Not authenticated');
+    }
+
+    try {
+      const { data: response, error } = await supabase.functions.invoke('create-customer-record', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (error) {
+        console.error('[paymentService] Error creating customer record:', error);
+        throw error;
+      }
+
+      return response;
+    } catch (err) {
+      console.error('[paymentService] Failed to create customer record:', err);
+      throw new Error('Failed to create customer record: ' + err.message);
+    }
+  },
+
   async createSetupIntent(email) {
     const { data: { session } } = await supabase.auth.getSession();
 
@@ -104,7 +138,7 @@ export const paymentService = {
    * @param {Object} metadata - Additional metadata
    * @returns {Promise<Object>} Charge result
    */
-  async chargeCampaign(campaignId, amountCents, metadata = {}) {
+  async chargeCampaign(campaignId, amountCents, metadata = {}, userId = null) {
     console.log('[Payment Service] Charging campaign:', campaignId, 'Amount:', amountCents / 100);
 
     const { data: { session } } = await supabase.auth.getSession();
@@ -113,12 +147,15 @@ export const paymentService = {
       throw new Error('Not authenticated');
     }
 
+    // Use provided userId or fall back to session user (for admin approvals vs self-service)
+    const targetUserId = userId || session.user.id;
+
     try {
       // Get user's customer record
       const { data: customer, error: customerError } = await supabase
         .from('customers')
         .select('id, stripe_customer_id')
-        .eq('user_id', session.user.id)
+        .eq('user_id', targetUserId)
         .single();
 
       if (customerError || !customer) {
@@ -165,7 +202,7 @@ export const paymentService = {
           metadata: {
             ...metadata,
             campaign_id: campaignId,
-            user_id: session.user.id,
+            user_id: targetUserId,
           },
           customerId: customer.stripe_customer_id,
           paymentMethodId: paymentMethod.stripe_payment_method_id,
@@ -366,11 +403,22 @@ export const paymentService = {
 
   /**
    * Save a new payment method using Stripe CardElement
+   * ✅ FIXED: Now accepts stripe instance as parameter
+   * @param {Object} stripe - Stripe instance from useStripe() hook
    * @param {Object} cardElement - Stripe CardElement
    * @returns {Promise<Object>} Result object with success status
    */
-  async savePaymentMethod(cardElement) {
+  async savePaymentMethod(stripe, cardElement) {
     try {
+      // Validate inputs
+      if (!stripe) {
+        return { success: false, error: 'Stripe is not initialized' };
+      }
+
+      if (!cardElement) {
+        return { success: false, error: 'Card element is required' };
+      }
+
       // Get session
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
@@ -408,9 +456,7 @@ export const paymentService = {
         return { success: false, error: errorMsg };
       }
 
-      // Confirm the setup intent with Stripe (with 30 second timeout)
-      const stripe = window.Stripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
-
+      // ✅ FIX: Use the stripe instance passed as parameter (same one used for CardElement)
       // Wrap Stripe confirmation with timeout to handle both timeout and actual errors
       const confirmWithTimeout = async () => {
         return Promise.race([
@@ -447,16 +493,19 @@ export const paymentService = {
         return { success: false, error: 'Payment method setup failed' };
       }
 
+      const paymentMethod = await stripekey.paymentMethods.retrieve(
+        setupIntent.payment_method 
+      );
+
       // Add payment method details to setupIntent object for addPaymentMethod
       setupIntent.payment_method_details = {
         card: {
-          brand: setupIntent.payment_method?.card?.brand || 'unknown',
-          last4: setupIntent.payment_method?.card?.last4 || '0000',
-          exp_month: setupIntent.payment_method?.card?.exp_month || 1,
-          exp_year: setupIntent.payment_method?.card?.exp_year || 2025,
+          brand: paymentMethod?.card?.brand ,
+          last4: paymentMethod?.card?.last4,
+          exp_month: paymentMethod?.card?.exp_month,
+          exp_year: paymentMethod?.card?.exp_year,
         }
       };
-
       // Add the payment method to database
       await this.addPaymentMethod(setupIntent);
 
@@ -507,20 +556,20 @@ export const paymentService = {
         .eq('customer_id', customer.id);
 
       const isFirstMethod = !existingMethods || existingMethods.length === 0;
-
       // Insert payment method into database
       const { data: paymentMethod, error } = await supabase
         .from('payment_methods')
         .insert({
           customer_id: customer.id,
           stripe_payment_method_id: setupIntent.payment_method,
-          brand: setupIntent.payment_method_details?.card?.brand || 'unknown',
-          last4: setupIntent.payment_method_details?.card?.last4 || '0000',
-          exp_month: setupIntent.payment_method_details?.card?.exp_month || 1,
-          exp_year: setupIntent.payment_method_details?.card?.exp_year || 2025,
+          card_brand: setupIntent.payment_method_details?.card?.brand || 'unknown',
+          card_last4: setupIntent.payment_method_details?.card?.last4 || '0000',
+          card_exp_month: setupIntent.payment_method_details?.card?.exp_month || 1,
+          card_exp_year: setupIntent.payment_method_details?.card?.exp_year || 2025,
           is_default: isFirstMethod, // First payment method is default
           created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
+          type:'card'
         })
         .select()
         .single();
@@ -590,6 +639,32 @@ export const paymentService = {
         return { success: false, error: error.message };
       }
 
+      // Log default payment method change to activity logs
+      try {
+        const { data: pmData } = await supabase
+          .from('payment_methods')
+          .select('card_brand, card_last4')
+          .eq('id', paymentMethodId)
+          .single();
+
+        await supabase.from('admin_activity_logs').insert({
+          admin_id: null,
+          user_id: user.id,
+          action_type: 'payment_method_default_changed',
+          target_type: 'payment_method',
+          target_id: paymentMethodId,
+          metadata: {
+            card_brand: pmData?.card_brand,
+            card_last4: pmData?.card_last4,
+            timestamp: new Date().toISOString(),
+          },
+        });
+        console.log('[paymentService] Activity log created for default change');
+      } catch (logError) {
+        console.error('[paymentService] Failed to create activity log:', logError.message);
+        // Don't fail the operation if logging fails
+      }
+
       return { success: true };
     } catch (error) {
       console.error('[paymentService] Error setting default payment method:', error);
@@ -629,6 +704,13 @@ export const paymentService = {
         return { success: false, error: 'Customer not found' };
       }
 
+      // Get payment method details before deleting (for activity log)
+      const { data: pmData } = await supabase
+        .from('payment_methods')
+        .select('card_brand, card_last4')
+        .eq('id', paymentMethodId)
+        .single();
+
       // Delete the payment method
       const { error } = await supabase
         .from('payment_methods')
@@ -639,6 +721,26 @@ export const paymentService = {
       if (error) {
         console.error('[paymentService] Error deleting payment method:', error);
         return { success: false, error: error.message };
+      }
+
+      // Log payment method removal to activity logs
+      try {
+        await supabase.from('admin_activity_logs').insert({
+          admin_id: null,
+          user_id: user.id,
+          action_type: 'payment_method_removed',
+          target_type: 'payment_method',
+          target_id: paymentMethodId,
+          metadata: {
+            card_brand: pmData?.card_brand,
+            card_last4: pmData?.card_last4,
+            timestamp: new Date().toISOString(),
+          },
+        });
+        console.log('[paymentService] Activity log created for removal');
+      } catch (logError) {
+        console.error('[paymentService] Failed to create activity log:', logError.message);
+        // Don't fail the operation if logging fails
       }
 
       // If this was the default method, set another as default
