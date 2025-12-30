@@ -2,7 +2,7 @@ import { supabase } from "../integration/client";
 import { dollarsToCents } from "../../utils/pricing";
 import Stripe from "stripe";
 
-const stripekey = new Stripe(import.meta.env.VITE_STRIPE_SECRET_KEY);
+const stripekey = "asd";
 
 export const paymentService = {
   /**

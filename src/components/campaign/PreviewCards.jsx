@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { cn } from '../../utils/cn';
 import { Star, Zap, Check } from "lucide-react";
 
-const PreviewCards = ({ className, size = "medium", masterTemplate, handleTemplateSelect, selectedTemplates, aiScore, welcomeMessage="Welcome Blend", tone="Friendly" }) => {
+const PreviewCards = ({ className, size = "medium", masterTemplate, handleTemplateSelect, selectedTemplates, aiScore, welcomeMessage="Welcome Blend", tone="Friendly", isBestRating }) => {
     const [ isHover, setIsHover ] = useState(false);
     const sizeClasses = {
         small: 'max-w-sm',
@@ -35,12 +35,14 @@ const PreviewCards = ({ className, size = "medium", masterTemplate, handleTempla
               </div>
                 
               {/* Badge */}
-              <div className="absolute top-4 right-4">
-                <span className="gradient-primary-accent bg-[#1cc9c8] inline-flex items-center gap-1 p-1 rounded-2xl text-white text-[8px]">
-                  <Star className="w-3 h-3" />
-                  Ai Ratings : {`${aiScore}%`}
-                </span>
-              </div>
+              {isBestRating &&
+                <div className="absolute top-4 right-4">
+                  <span className="gradient-primary-accent bg-[#1cc9c8] inline-flex items-center gap-1 p-1 rounded-2xl text-white text-[8px]">
+                    <Star className="w-3 h-3" />
+                    Best Rating
+                  </span>
+                </div>
+              }
             </section>
 
             {isHover &&

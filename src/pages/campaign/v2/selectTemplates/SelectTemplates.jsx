@@ -82,8 +82,13 @@ const SelectTemplates = () => {
           
           // Step 4: Now inject brand data into sorted templates
           const processedTemplates = await injectBrandDataIntoTemplates(templatesWithScores);
+          const maxScore = Math.max(...processedTemplates.map(t => t.score));
+          const templatesWithFlag = processedTemplates.map(template => ({
+            ...template,
+            isBestRating: template.score === maxScore
+          }));
           
-          setTemplates(processedTemplates);
+          setTemplates(templatesWithFlag);
           setAiResponse(aiSuggestions);
         
       } catch (error) {
@@ -355,6 +360,7 @@ const SelectTemplates = () => {
                             aiScore={template.score}
                             welcomeMessage={template.welcomeMessage}
                             tone={template.tone}
+                            isBestRating={template.isBestRating}
                           />
                         ))}
                       </div>
