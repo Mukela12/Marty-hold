@@ -32,7 +32,7 @@ const SelectTemplates = () => {
     const getAigeneraterPostCards = async () => {
       try {
         const { data, error } = await supabase.functions.invoke('ai-postcard-generator', {
-          body: { brand:apiResponse.brand,images:[]  },
+          body: { brand:apiResponse.brand,images:["https://slash1.printmiami.com/wp-content/uploads/dental-postcard-design-6.jpg", "https://slash1.printmiami.com/wp-content/uploads/dental-postcard-design-2.jpg"]  },
         })
         if(error){
           throw new Error("Error in getting AI generated postcards")
@@ -110,21 +110,21 @@ console.log("cleanHtmlList----->", cleanHtmlDataList);
           throw new Error("Error in fetching the templates");
         }
           // Step 2: Get AI suggestions BEFORE template injection
-          const aiSuggestions = await getAiSuggestionsForTemplates(templatesData);
+          // const aiSuggestions = await getAiSuggestionsForTemplates(templatesData);
           
-          // Step 3: Store AI scores and sort templates
-          const templatesWithScores = processAiScoresAndSort(templatesData, aiSuggestions);
+          // // Step 3: Store AI scores and sort templates
+          // const templatesWithScores = processAiScoresAndSort(templatesData, aiSuggestions);
           
-          // Step 4: Now inject brand data into sorted templates
-          const processedTemplates = await injectBrandDataIntoTemplates(templatesWithScores);
-          const maxScore = Math.max(...processedTemplates.map(t => t.score));
-          const templatesWithFlag = processedTemplates.map(template => ({
-            ...template,
-            isBestRating: template.score === maxScore
-          }));
+          // // Step 4: Now inject brand data into sorted templates
+          // const processedTemplates = await injectBrandDataIntoTemplates(templatesWithScores);
+          // const maxScore = Math.max(...processedTemplates.map(t => t.score));
+          // const templatesWithFlag = processedTemplates.map(template => ({
+          //   ...template,
+          //   isBestRating: template.score === maxScore
+          // }));
           
-          setTemplates(templatesWithFlag);
-          setAiResponse(aiSuggestions);
+          setTemplates(templatesData);
+          // setAiResponse(aiSuggestions);
         
       } catch (error) {
         toast.error("Failed to load templates");
@@ -392,10 +392,10 @@ console.log("cleanHtmlList----->", cleanHtmlDataList);
                             handleTemplateSelect={handleTemplateSelect}
                             selectedTemplates={selectedTemplateId == template.template_id} 
                             masterTemplate={template}
-                            aiScore={template.score}
-                            welcomeMessage={template.welcomeMessage}
-                            tone={template.tone}
-                            isBestRating={template.isBestRating}
+                            aiScore={template?.score}
+                            welcomeMessage={template?.welcomeMessage}
+                            tone={template?.tone}
+                            isBestRating={template?.isBestRating}
                           />
                         ))}
                       </div>

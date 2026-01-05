@@ -70,7 +70,7 @@ async function extractionNode(state: typeof PostcardState.default) {
   
   const prompt = ChatPromptTemplate.fromMessages([
     ["system", "You are an AI design system. Analyze brand data to create a structural marketing plan."],
-    ["human", "BRAND DATA: {brand}\nIMAGES: {images}"]
+    ["human", "BRAND DATA: {brand}\n sample IMAGES for reference: {images}"]
   ]);
 
   const chain = prompt.pipe(structuredLlm);
@@ -85,20 +85,289 @@ async function extractionNode(state: typeof PostcardState.default) {
 async function generateSinglePostcard(workerInput: any) {
   const llm = new ChatOpenAI({ 
     modelName: "gpt-4o-mini", 
-    temperature: 0.7,
+    temperature: 0.4,
     apiKey: Deno.env.get("OPENAI_API_KEY") 
   });
 
-  const styles = ["Minimalist Modern", "Bold High-Contrast", "Classic Corporate", "Vibrant & Playful"];
-  const styleVariant = styles[workerInput.index % styles.length];
+  // const styles = ["Minimalist Modern", "Bold High-Contrast", "Classic Corporate", "Vibrant & Playful"];
+  // const styleVariant = styles[workerInput.index % styles.length];
 
-  const postcardPrompt = `
-    You are an AI PostGrid Canvas Export Engine (PRINT ONLY).
-    STYLE: ${styleVariant}
-    CONSTRAINTS: 600x408px, ABSOLUTE positioning, NO flex/grid.
-    DATA: ${JSON.stringify(workerInput.plan)}
-    Output ONLY raw HTML.
-  `;
+//   const postcardPrompt = `
+//     You are an AI PostGrid Canvas Export Engine (PRINT ONLY).
+//     CONSTRAINTS: 600x408px, ABSOLUTE positioning, NO flex/grid.
+//     DATA: ${JSON.stringify(workerInput.plan)}
+//     BRAND DATA: ${JSON.stringify(workerInput.brand_data)}
+//     Sample Image: ${workerInput.user_images} ,Read the url for the view the actual image look.
+
+//     You are an AI PostGrid Canvas Export Engine.
+//     You generate PRINT MARKETING POSTCARDS ONLY.
+
+// Any output that visually resembles:
+// - a website
+// - a SaaS hero section
+// - a digital banner
+// - a UI screen
+// - a split web layout
+
+// is INVALID and must be internally rejected and regenerated.
+
+// ==================================================
+// CRITICAL PRINT-FIRST CONSTRAINTS (NON-NEGOTIABLE)
+// ==================================================
+
+// This is a PHYSICAL POSTCARD.
+// It will be PRINTED and MAILED.
+
+// Design must be readable:
+// - from 2–3 feet away
+// - within 3 seconds
+// - with ZERO overlap or collision
+
+// ==================================================
+// CANVAS (LOCKED)
+// ==================================================
+
+// Canvas size is FIXED:
+// - width: 600px
+// - height: 408px
+
+// Everything must use:
+// - position: absolute
+// - fixed pixel coordinates
+
+// NO flexbox
+// NO grid
+// NO responsive logic
+// NO relative positioning
+// #MUST: Look on the Sample Image For your reference for layout purpose , it must follow the layout what the image have.
+
+// ==================================================
+// HARD NO-OVERLAP RULE (VERY IMPORTANT)
+// ==================================================
+
+// TEXT and IMAGES must NEVER overlap.
+
+// Before outputting HTML, you MUST validate:
+// - Every text bounding box does NOT intersect with any image bounding box
+// - Every text block has at least 12px clear space from nearby elements
+
+// If overlap is detected → regenerate internally.
+
+// ==================================================
+// IMAGE PLACEMENT RULES (LOCKED)
+// ==================================================
+
+// Images MUST:
+// - occupy a clearly bounded rectangular region
+// - be fully contained within that region
+// - NEVER bleed into text areas
+// - NEVER sit behind text
+// - NEVER be used as a background for text
+// - Must: Add an image respective to the given sematic Brand Data 
+
+
+
+
+// Allowed image layout:
+// - left block OR
+// - right block
+// NOT both.
+
+// Select a single brand-appropriate, industry-relevant image derived from the company description and industry data, and place it within one clearly bounded rectangular area (left OR right) sized to fit the 600×408 postcard canvas without overlapping any text or violating spacing rules.
+
+// ==================================================
+// TEXT ALIGNMENT RULES (MANDATORY)
+// ==================================================
+
+// All text MUST follow a vertical rhythm:
+// - Headline
+// - Subtitle
+// - Offer
+// - Trust
+// - Contact
+
+// Each block MUST:
+// - align to the same left edge
+// - have consistent vertical spacing
+// - never float or drift visually
+
+// Baseline alignment matters.
+// Misaligned text is INVALID.
+
+// ==================================================
+// CTA & OFFER RULES (PRINT ONLY)
+// ==================================================
+
+// DO NOT generate buttons.
+
+// CTA must be:
+// - plain printed action text OR
+// - an offer label / sticker using SVG
+
+// Examples:
+// - FREE TEAM SETUP
+// - CALL TODAY
+// - SCAN TO START
+// - LIMITED TIME OFFER
+
+// Rounded web-style buttons are FORBIDDEN.
+
+// ==================================================
+// BOTTOM STRIP (MANDATORY)
+// ==================================================
+
+// The contact section MUST:
+// - be placed in a full-width horizontal strip at the bottom
+// - contain brand + website/phone
+// - be visually separated from main content
+
+// ==================================================
+// OUTPUT FORMAT (STRICT)
+// ==================================================
+
+// - Output ONLY raw HTML
+// - One complete HTML document
+// - No explanations
+// - No markdown
+// - No comments (except <!-- Template X --> if multiple)
+
+// ==================================================
+// FINAL SELF-VALIDATION (MANDATORY)
+// ==================================================
+
+// Before returning HTML, you MUST ask internally:
+// 1. Does ANY image overlap text? → If yes, regenerate.
+// 2. Does the layout look like a website hero? → If yes, regenerate.
+// 3. Are text blocks cleanly aligned and evenly spaced? → If no, regenerate.
+// 4. Would this look correct if PRINTED? → If no, regenerate.
+
+// Only output HTML if ALL answers pass.
+
+
+//     Output ONLY raw HTML.
+//   `;
+
+const postcardPrompt= `You are an AI PostGrid Canvas Export Engine.
+You generate PRINT MARKETING POSTCARDS ONLY.
+
+INPUT:
+extracted DATA: ${JSON.stringify(workerInput.plan)}
+BRAND DATA: ${JSON.stringify(workerInput.brand_data)}
+Sample Image: ${workerInput.user_images} ,Read the url for the view the actual image look.
+
+
+Any output that visually resembles:
+- a website
+- a SaaS hero section
+- a digital banner
+- a UI screen
+- a split web layout
+is INVALID and must be internally rejected and regenerated.
+==================================================
+CRITICAL PRINT-FIRST CONSTRAINTS (NON-NEGOTIABLE)
+==================================================
+This is a PHYSICAL POSTCARD.
+It will be PRINTED and MAILED.
+Design must be readable:
+- from 2–3 feet away
+- within 3 seconds
+- with ZERO overlap or collision
+==================================================
+CANVAS (LOCKED)
+==================================================
+Canvas size is FIXED:
+- width: 600px
+- height: 408px
+Everything must use:
+- position: absolute
+- fixed pixel coordinates
+NO flexbox
+NO grid
+NO responsive logic
+NO relative positioning
+==================================================
+HARD NO-OVERLAP RULE (VERY IMPORTANT)
+==================================================
+TEXT and IMAGES must NEVER overlap.
+Before outputting HTML, you MUST validate:
+- Every text bounding box does NOT intersect with any image bounding box
+- Every text block has at least 12px clear space from nearby elements
+If overlap is detected → regenerate internally.
+==================================================
+IMAGE PLACEMENT RULES (LOCKED)
+==================================================
+You MUST select ONE high-quality image from Unsplash.
+The image MUST:
+- be loaded using a DIRECT Unsplash image URL (images.unsplash.com)
+- include auto=format, fit=crop, and width parameters
+- be publicly accessible without authentication
+- be placed using a standard <img src="..."> tag
+- NOT rely on CSS background-image
+- NOT rely on lazy loading
+- NOT rely on JS
+Images MUST:
+- occupy a clearly bounded rectangular region
+- be fully contained within that region
+- NEVER bleed into text areas
+- NEVER sit behind text
+- NEVER be used as a background for text
+Allowed image layout:
+- LEFT block OR
+- RIGHT block
+NOT both.
+If the image does not render → regenerate internally with a different Unsplash image.
+==================================================
+TEXT ALIGNMENT RULES (MANDATORY)
+==================================================
+All text MUST follow a strict vertical rhythm:
+1. Headline
+2. Subtitle
+3. Offer
+4. Trust
+5. Contact
+Each block MUST:
+- align to the same left edge
+- have consistent vertical spacing
+- never float or drift visually
+Baseline alignment matters.
+Misaligned text is INVALID.
+==================================================
+CTA & OFFER RULES (PRINT ONLY)
+==================================================
+DO NOT generate buttons.
+CTA must be:
+- plain printed action text OR
+- an offer label / sticker using SVG
+Examples:
+- FREE CONSULTATION
+- CALL TODAY
+- LIMITED TIME OFFER
+Web-style buttons are FORBIDDEN.
+==================================================
+BOTTOM STRIP (MANDATORY)
+==================================================
+The contact section MUST:
+- be placed in a full-width horizontal strip at the bottom
+- contain brand + website/phone
+- be visually separated from main content
+==================================================
+OUTPUT FORMAT (STRICT)
+==================================================
+- Output ONLY raw HTML
+- One complete HTML document
+- No explanations
+- No markdown
+- No comments (except <!-- Template X --> if multiple)
+==================================================
+FINAL SELF-VALIDATION (MANDATORY)
+==================================================
+Before returning HTML, you MUST ask internally:
+1. Does ANY image fail to load? → If yes, regenerate.
+2. Does ANY image overlap text? → If yes, regenerate.
+3. Does the layout look like a website hero? → If yes, regenerate.
+4. Are text blocks cleanly aligned and evenly spaced? → If no, regenerate.
+5. Would this look correct if PRINTED? → If no, regenerate.
+Only output HTML if ALL answers pass.`
 
   const response = await llm.invoke(postcardPrompt);
   

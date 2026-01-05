@@ -35,14 +35,14 @@ const PreviewCards = ({ className, size = "medium", masterTemplate, handleTempla
               </div>
                 
               {/* Badge */}
-              {isBestRating &&
+              {/* {isBestRating &&
                 <div className="absolute top-4 right-4">
                   <span className="gradient-primary-accent bg-[#1cc9c8] inline-flex items-center gap-1 p-1 rounded-2xl text-white text-[8px]">
                     <Star className="w-3 h-3" />
                     Best Rating
                   </span>
                 </div>
-              }
+              } */}
             </section>
 
             {isHover &&
