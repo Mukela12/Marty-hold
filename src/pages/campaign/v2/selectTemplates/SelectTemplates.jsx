@@ -35,6 +35,7 @@ const SelectTemplates = () => {
           body: { brand:apiResponse.brand,images:["https://slash1.printmiami.com/wp-content/uploads/dental-postcard-design-6.jpg", "https://slash1.printmiami.com/wp-content/uploads/dental-postcard-design-2.jpg"]  },
         })
         if(error){
+
           throw new Error("Error in getting AI generated postcards")
         }
         console.log("ai generated postcards----->", data);
@@ -58,6 +59,7 @@ const cleanHtmlDataList = data.postcards.map(card => {
 console.log("cleanHtmlList----->", cleanHtmlDataList);
         return cleanHtmlDataList;
       } catch (error) {
+        console.log("error---->", error.message)
         console.error(error);
       }
     }
