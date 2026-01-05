@@ -26,7 +26,41 @@ const SelectTemplates = () => {
 
     useEffect(() => {
       initializeTemplates();
+      // getAigeneraterPostCards()    
     }, []);
+
+    const getAigeneraterPostCards = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('ai-postcard-generator', {
+          body: { brand:apiResponse.brand,images:[]  },
+        })
+        if(error){
+          throw new Error("Error in getting AI generated postcards")
+        }
+        console.log("ai generated postcards----->", data);
+
+const cleanHtmlDataList = data.postcards.map(card => {
+  const cleanHtmlContent= card
+    .replace(/^```html\s*/i, '')
+    .replace(/```$/i, '')
+    .replace(/\\n/g, '\n')
+    .replace(/\\"/g, '"')
+    .trim();
+
+    return {
+      id: crypto.randomUUID(),
+      template_id: crypto.randomUUID(),
+      html: cleanHtmlContent,
+      metadata: ""
+    };
+});
+
+console.log("cleanHtmlList----->", cleanHtmlDataList);
+        return cleanHtmlDataList;
+      } catch (error) {
+        console.error(error);
+      }
+    }
 
     /* Get templates from the supabase */
     const getTemplates = async () => {
@@ -70,7 +104,8 @@ const SelectTemplates = () => {
       try {
         setLoading(true);
         // Step 1: Get templates from database
-        const templatesData = await getTemplates();
+        const templatesData =await getAigeneraterPostCards()
+        console.log("templatesData--->", templatesData)
         if(!templatesData||templatesData.length==0){
           throw new Error("Error in fetching the templates");
         }
