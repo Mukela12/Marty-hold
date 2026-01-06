@@ -25,13 +25,13 @@ const SelectTemplates = () => {
     const { mappedData: brand, apiResponse } = useBrandDev();    
 
     useEffect(() => {
-      initializeTemplates();
-      // getAigeneraterPostCards()    
+      initializeTemplates(); 
     }, []);
 
     const getAigeneraterPostCards = async () => {
       try {
-        const { data, error } = await supabase.functions.invoke('ai-postcard-generator', {
+        console.log("brandData---->", apiResponse.brand)
+        const { data, error } = await supabase.functions.invoke('ai-postcard-generator-v2', {
           body: { brand:apiResponse.brand,images:["https://slash1.printmiami.com/wp-content/uploads/dental-postcard-design-6.jpg", "https://slash1.printmiami.com/wp-content/uploads/dental-postcard-design-2.jpg"]  },
         })
         if(error){
