@@ -117,34 +117,59 @@ async function generateSinglePostcard(workerInput: any) {
   const { plan, brand_data, index } = workerInput;
   const address = getPrimaryAddress(brand_data)
   const contact = getPrimaryContact(brand_data)
-  const designerPrompt = `
-    You are a World-Class Graphic Designer. Create a High-Conversion Marketing Postcard.
-    
-    CANVAS: 600px x 408px (Fixed Print Size)
-    
-    BRAND IDENTITY:
-    - Name: ${brand_data.title}
-    - Colors: Primary(${brand_data.colors[0].hex, brand_data.colors[0].name}), Accent(${brand_data.colors[1].hex, brand_data.colors[1].name}),
-    - Tagline: ${brand_data?.slogan} 
-    - Address: ${address}
-    - Contact: ${contact}
+  const industry = brand_data.industries?.eic?.[0]?.industry
+  const photoUrl = `https://unsplash.com/s/photos/${industry}`
 
-    LAYOUT BLUEPRINT (Follow this geometry strictly):
-    - Hero Area: ${plan.geometry.hero_box}
-    - Content Area: ${plan.geometry.content_box}
-    - Badge Area: ${plan.geometry.badge_box}
-    - Footer Area: ${plan.geometry.footer_box}
+  const designerPrompt=`You are a World-Class Graphic Designer. Create a High-Conversion Marketing Postcard.
 
-    DESIGN RULES:
-    1. Use Google Fonts: "Montserrat" for headlines, "Inter" for body.
-    2. All elements MUST use "position: absolute".
-    3. The Hero image should use "object-fit: cover". Use a high-quality placeholder image related to ${brand_data.industries.eic[0].industry}.
-    4. Create a compelling "Call to Action" that doesn't look like a web button, but a high-end print element.
-    5. Variation ID: ${index} (Ensure the copy and headlines are unique from other versions).
 
-    OUTPUT: 
-    Return ONLY the raw HTML/CSS. No markdown code blocks. No explanations.
-  `;
+CANVAS: 600px x 408px (Fixed Print Size)
+
+
+BRAND IDENTITY:
+
+- Name: ${brand_data.title}
+
+- Colors: Primary(${brand_data.colors[0].hex, brand_data.colors[0].name}), Accent(${brand_data.colors[1].hex, brand_data.colors[1].name}),
+
+- Tagline: ${brand_data?.slogan}
+
+- Address: ${address}
+
+- Contact: ${contact}
+
+
+
+LAYOUT BLUEPRINT (Follow this geometry strictly):
+
+- Hero Area: ${plan.geometry.hero_box}
+
+- Content Area: ${plan.geometry.content_box}
+
+- Badge Area: ${plan.geometry.badge_box}
+
+- Footer Area: ${plan.geometry.footer_box}
+
+
+
+DESIGN RULES:
+
+1. Use Google Fonts: "Montserrat" for headlines, "Inter" for body.
+
+2. All elements MUST use "position: absolute".
+
+3. The Hero image should use "object-fit: cover". Use a high-quality placeholder image related to ${brand_data.industries.eic[0].industry}.
+
+4. Create a compelling "Call to Action" that doesn't look like a web button, but a high-end print element.
+
+5. Variation ID: ${index} (Ensure the copy and headlines are unique from other versions).
+
+
+
+OUTPUT:
+
+Return ONLY the raw HTML/CSS. No markdown code blocks. No explanations.`
+
 
   const response = await llm.invoke(designerPrompt);
   return { final_html_gallery: [response.content] };
@@ -156,7 +181,6 @@ const dispatchWorkers = (state: any) => {
   const availablePlans = state.plans;
 
   return Array.from({ length: TOTAL_VARIATIONS }).map((_, i) => {
-    // Cycles through the extracted plans to create 12 variations
     const selectedPlan = availablePlans[i % availablePlans.length];
     
     return new Send("generate_single_postcard", {
