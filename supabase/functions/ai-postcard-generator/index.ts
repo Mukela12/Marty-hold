@@ -64,6 +64,49 @@ async function extractionNode(state: any) {
   return { plans: response.plans };
 }
 
+function getPrimaryContact(data:any) {
+  const email = data?.email;
+  const phone = data?.phone;
+  const domain = data?.domain;
+  const socials = data?.socials || [];
+
+  if (email && phone) return `${email} | ${phone}`;
+  if (email) return email;
+  if (phone) return phone;
+  if (domain) return domain;
+  if (socials.length) return socials[0].url;
+
+  return "";
+}
+
+function getPrimaryAddress(data:any) {
+  const addr = data?.address;
+  const email = data?.email;
+  const phone = data?.phone;
+  const domain = data?.domain;
+  const socials = data?.socials || [];
+
+  if (addr) {
+    return [
+      addr?.street,
+      addr?.city,
+      addr?.state_province,
+      addr?.postal_code,
+      addr?.country
+    ]
+      .filter(Boolean)
+      .join(", ");
+  }
+
+  if (email && phone) return `${email} | ${phone}`;
+  if (email) return email;
+  if (phone) return phone;
+  if (socials.length) return socials[0].url;
+  if (domain) return domain;
+
+  return "";
+}
+
 
 async function generateSinglePostcard(workerInput: any) {
   const llm = new ChatOpenAI({ 
@@ -71,19 +114,20 @@ async function generateSinglePostcard(workerInput: any) {
     temperature: 0.7, 
     apiKey: Deno.env.get("OPENAI_API_KEY") 
   });
-
   const { plan, brand_data, index } = workerInput;
-
+  const address = getPrimaryAddress(brand_data)
+  const contact = getPrimaryContact(brand_data)
   const designerPrompt = `
     You are a World-Class Graphic Designer. Create a High-Conversion Marketing Postcard.
     
     CANVAS: 600px x 408px (Fixed Print Size)
     
     BRAND IDENTITY:
-    - Name: ${brand_data.name}
-    - Colors: Primary(${brand_data.primary_color}), Accent(${brand_data.secondary_color})
-    - Tone: ${brand_data.tone || 'Professional'}
-    - Tagline: ${brand_data.slogan}
+    - Name: ${brand_data.title}
+    - Colors: Primary(${brand_data.colors[0].hex, brand_data.colors[0].name}), Accent(${brand_data.colors[1].hex, brand_data.colors[1].name}),
+    - Tagline: ${brand_data?.slogan} 
+    - Address: ${address}
+    - Contact: ${contact}
 
     LAYOUT BLUEPRINT (Follow this geometry strictly):
     - Hero Area: ${plan.geometry.hero_box}
@@ -94,7 +138,7 @@ async function generateSinglePostcard(workerInput: any) {
     DESIGN RULES:
     1. Use Google Fonts: "Montserrat" for headlines, "Inter" for body.
     2. All elements MUST use "position: absolute".
-    3. The Hero image should use "object-fit: cover". Use a high-quality placeholder image related to ${brand_data.category}.
+    3. The Hero image should use "object-fit: cover". Use a high-quality placeholder image related to ${brand_data.industries.eic[0].industry}.
     4. Create a compelling "Call to Action" that doesn't look like a web button, but a high-end print element.
     5. Variation ID: ${index} (Ensure the copy and headlines are unique from other versions).
 
