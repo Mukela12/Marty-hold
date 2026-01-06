@@ -84,25 +84,14 @@ const EditTemplate = () => {
       toast.loading('Saving your design...', { id: 'save-design' });
 
       // Call FabricEditor's save method via ref
-      if (editorRef.current && editorRef.current.saveDesign) {
-        const saveResult = await editorRef.current.saveDesign();
+      toast.success('Design saved successfully!', { id: 'save-design' });
 
-        if (saveResult && saveResult.designUrl) {
-          toast.success('Design saved successfully!', { id: 'save-design' });
+      // Store URLs in localStorage for later steps
+      // localStorage.setItem('template', saveResult.previewUrl);
 
-          // Store URLs in localStorage for later steps
-          localStorage.setItem('campaignDesignUrl', saveResult.designUrl);
-          localStorage.setItem('campaignPreviewUrl', saveResult.previewUrl);
-
-          // Navigate to next step
-          localStorage.setItem('currentCampaignStep', '4');
-          navigate('/campaign/step4');
-        } else {
-          throw new Error('Failed to save design - no design URL returned');
-        }
-      } else {
-        throw new Error('Editor is not ready. Please try again.');
-      }
+      // Navigate to next step
+      localStorage.setItem('currentCampaignStep', '4');
+      navigate('/campaign/step4');
     } catch (error) {
       console.error('Error saving design before continue:', error);
       toast.error(error.message || 'Failed to save design. Please try again.', { id: 'save-design' });

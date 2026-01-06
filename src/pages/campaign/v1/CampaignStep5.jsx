@@ -7,6 +7,7 @@ import ProcessLayout from '../../../components/process/ProcessLayout';
 import { formatPrice } from '../../../utils/pricing';
 import campaignService from '../../../supabase/api/campaignService';
 import { paymentService } from '../../../supabase/api/paymentService';
+import { supabase } from '../../../supabase/integration/client';
 import toast from 'react-hot-toast';
 
 const CampaignStep5 = () => {
@@ -18,13 +19,40 @@ const CampaignStep5 = () => {
   const [companyData, setCompanyData] = useState(null);
   const [isActivating, setIsActivating] = useState(false);
   const [previewUrl, setPreviewUrl] = useState(null);
+  const [postGridTemplate, setPostGridTemplate] = useState("");
 
   const totalSteps = 5;
+  const getPostGridTemplate = async (templateId) => {
+    try {
+      // handle templateid error
+      if(!templateId) return toast.error("Template ID is missing or invalid.");
+      
+      // get the template data from the postgrid
+      const { data } = await supabase.functions.invoke("get-postgrid-templates", {
+        body: {
+          templateId
+        }
+      });
+
+      // Template Response
+      console.log(data);
+      
+      if(data.success) {
+        const { data: templateResponse } = data;
+        setPostGridTemplate(templateResponse);
+      };
+    } catch (error) {
+      toast.error("Failed to retrieve the PostGrid preview URL.")  
+    };
+  };
 
   // Load data from localStorage and sessionStorage
   useEffect(() => {
     // Load selected template
     const savedTemplate = localStorage.getItem('campaignSelectedTemplate');
+    const templateId = localStorage.getItem('postgrid-template-id');
+    getPostGridTemplate(templateId);
+
     if (savedTemplate) {
       setSelectedTemplate(JSON.parse(savedTemplate));
     }
@@ -222,18 +250,10 @@ const CampaignStep5 = () => {
           <div className="launch-section">
             <h2 className="launch-section-title">Post Card</h2>
             <div className="postcard-final-preview">
-              {(previewUrl || selectedTemplate?.preview) ? (
-                <img
-                  src={previewUrl || selectedTemplate.preview}
-                  alt={`${selectedTemplate?.name || 'Postcard'} preview`}
-                  className="postcard-preview-image"
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'contain',
-                    borderRadius: '8px'
-                  }}
-                />
+              {postGridTemplate?.html ? (
+                <iframe srcDoc={postGridTemplate?.html} 
+                className="w-150 h-102 border-0 block rounded-t-[5rem]"
+                title="PostGrid Preview"></iframe>
               ) : (
                 <div style={{
                   display: 'flex',
