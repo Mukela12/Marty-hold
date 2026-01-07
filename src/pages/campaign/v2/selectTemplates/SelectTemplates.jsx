@@ -31,7 +31,7 @@ const SelectTemplates = () => {
     const getAigeneraterPostCards = async () => {
       try {
         console.log("brandData---->", apiResponse.brand)
-        const { data, error } = await supabase.functions.invoke('ai-postcard-generator-v2', {
+        const { data, error } = await supabase.functions.invoke('ai-postcard-generator', {
           body: { brand:apiResponse.brand,images:["https://slash1.printmiami.com/wp-content/uploads/dental-postcard-design-6.jpg", "https://slash1.printmiami.com/wp-content/uploads/dental-postcard-design-2.jpg"]  },
         })
         if(error){

@@ -106,24 +106,6 @@ ELEMENT MAPPING GUIDELINES:
 - Decorative shapes → type: "figure"
 - Layout guides / background frames → type: "guideline"
 
-POSITIONING RULE:
-Derive x, y, width, height ONLY from:
-- explicit inline styles
-- absolute positioning
-- image dimensions
-- text bounding boxes estimated using fontSize × text length × lineHeight
-
-DO NOT invent spacing for aesthetics.
-
-ABSOLUTE RULE:
-If any required value (x, y, width, height, fontSize, src) 
-cannot be unambiguously derived from the HTML,
-YOU MUST fail and return:
-
-{
-  "error": "INSUFFICIENT_LAYOUT_INFORMATION"
-}
-
 
 OUTPUT FORMAT (EXACT — DO NOT WRAP):
 
@@ -146,13 +128,6 @@ OUTPUT FORMAT (EXACT — DO NOT WRAP):
   "unit": "px",
   "width": 600
 }
-
-FINAL VALIDATION PASS (MANDATORY):
-- Re-scan all elements
-- Assert no overlapping bounding boxes
-- Assert all required flags exist
-- Assert numeric types only
-If validation fails → return error JSON.
 
 
 --------------------------------
