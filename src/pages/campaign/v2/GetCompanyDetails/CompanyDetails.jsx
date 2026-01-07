@@ -10,6 +10,7 @@ import { useForm } from 'react-hook-form';
 import {businessCategories} from './GetCompanyUtils.js';
 import { useBrandDev } from '../../../../contexts/BrandDevContext.jsx';
 import campaignService from '../../../../supabase/api/campaignService.js';
+import { supabase } from '../../../../supabase/integration/client.js';
 
 const CampaignStep1 = () => {
   const navigate = useNavigate();

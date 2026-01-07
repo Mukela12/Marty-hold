@@ -3,7 +3,8 @@
 // This enables autocomplete, go to definition, etc.
 
 // Setup type definitions for built-in Supabase Runtime APIs
-import "jsr:@supabase/functions-js/edge-runtime.d.ts"
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { ChatOpenAI } from "npm:@langchain/openai";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,7 +12,72 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-Deno.serve(async (req) => {
+/* OPENAI INVOCATION */
+async function generateCategoryWithRetry(llm: ChatOpenAI, prompt: string, retries = 2 ): Promise<any> {
+  // variable used to check the retry after thrid time it will stop
+  let lastError: any;
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const response = await llm.invoke(prompt);
+      const raw = response.content as string;
+
+      // Strip markdown / fences
+      const cleaned = raw
+        .replace(/```json/gi, "")
+        .replace(/```/g, "")
+        .trim();
+
+      return JSON.parse(cleaned);
+    } catch (error) {
+      lastError = error;
+    };
+  };
+
+  throw new Error("Failed to infer brand category after retries");
+};
+
+// Brand → Exact Category inference
+async function fetchBrandCategory(brandDetails: any) {
+  const llm = new ChatOpenAI({
+    modelName: "gpt-4o",
+    temperature: 0,
+    apiKey: Deno.env.get("OPENAI_API_KEY")
+  });
+
+  const prompt = `
+You are a business classification engine.
+
+CONTEXT:
+- You receive structured brand metadata
+- Broad industries may be present (e.g., Healthcare)
+- Your job is to infer the MOST SPECIFIC real-world business category
+
+RULES (NON-NEGOTIABLE):
+- DO NOT return broad industries
+- DO NOT explain
+- DO NOT add multiple categories
+- Return ONE exact business category only
+
+EXAMPLES:
+Healthcare → Dental Clinic
+Healthcare → Eye Care Center
+Healthcare → Physiotherapy Clinic
+Food → Restaurant
+Retail → Clothing Store
+
+BRAND DETAILS:
+${JSON.stringify(brandDetails, null, 2)}
+
+OUTPUT FORMAT (EXACT — JSON ONLY):
+{
+  "brand_category": "<exact category>",
+  "confidence": <number between 0 and 1>
+}`;
+
+  return generateCategoryWithRetry(llm, prompt);
+};
+
+Deno.serve(async (req: any) => {
     if (req.method === "OPTIONS") {
       return new Response("ok", {
         headers: { ...corsHeaders },
@@ -56,8 +122,14 @@ Deno.serve(async (req) => {
         { error: "Brand.dev API error", details: result },
         apiResponse.status
       );
-    }
-
+    };
+    
+    /* get category */
+    const categoryResult = await fetchBrandCategory(result?.brand);
+    const { brand } = result;
+    brand['category'] = categoryResult.brand_category;
+    
+    // returning the response
     return jsonResponse({ data: result }, 200);
 
   } catch (err: any) {
