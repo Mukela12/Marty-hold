@@ -1,45 +1,15 @@
+// Follow this setup guide to integrate the Deno language server with your editor:
+// https://deno.land/manual/getting_started/setup_your_environment
+// This enables autocomplete, go to definition, etc.
+
+// Setup type definitions for built-in Supabase Runtime APIs
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 
-import { StateGraph, START, END, Send } from "npm:@langchain/langgraph"
-import { ChatOpenAI } from "npm:@langchain/openai"
+import { StateGraph, START, END, Send } from "npm:@langchain/langgraph@0.2.20" 
+import { ChatOpenAI } from "npm:@langchain/openai@0.3.0"
 import { ChatPromptTemplate } from "npm:@langchain/core/prompts"
-import { z } from "npm:zod"
+import { z } from "npm:zod@3.23.8"
 
-// =======================================================
-// 1. SCHEMAS
-// =======================================================
-
-
-
-// shapes working
-// const PostcardPlanSchema = z.object({
-//   layout_id: z.string(),
-//   geometry: z.object({
-//     hero_box: z.string(),
-//     content_box: z.string(),
-//     badge_box: z.string(),
-//     footer_box: z.string()
-//   }),
-//   mappings: z.object({
-//     logo_position: z.string().describe("e.g. top: 20px; right: 20px;"),
-//     headline_css: z.string().describe("The exact font-size, weight, and color logic"),
-//     background_overlay: z.string().describe("The CSS linear-gradient or opacity layer"),
-//     accent_border_style: z.string()
-//   }),
-//   design_tokens: z.object({
-//     primary_color: z.string(),
-//     accent_color: z.string(),
-//     typography_vibe: z.enum(["serif-elegant", "sans-minimalist", "bold-grotesque"]),
-//     accent_shape: z.enum(["organic-curves", "geometric-rect", "minimal-float"]),
-//     overlay_opacity: z.string()
-//   }),
-//   marketing_intent: z.object({
-//     brand_placement: z.enum(["hero-center", "top-left-elegant", "floating-badge"]),
-//     badge_copy: z.string().describe("High-conversion hook like 'Limited Offer' or 'Premium Quality'"),
-//     shape_complexity: z.enum(["layered", "intersecting", "subtle-minimal"])
-//   }),
-//   visual_style: z.enum(["modern", "classic", "minimalist", "bold"]),
-// });
 const PostcardPlanSchema = z.object({
   layout_id: z.string(),
   
@@ -108,7 +78,6 @@ const PostcardPlanSchema = z.object({
   }),
 });
 
-
 const MultiPostcardExtraction = z.object({
   plans: z.array(PostcardPlanSchema)
 })
@@ -123,11 +92,7 @@ const PostcardState = {
   plans: { value: (x:any, y:any) => y ?? x, default: () => [] },
   resolved_images: { value: (x:any, y:any) => y ?? x, default: () => [] },
   final_html_gallery: { value: (x:string[], y:string[]) => x.concat(y), default: () => [] }
-}
-
-// =======================================================
-// 3. EXTRACTION NODE (UNCHANGED OUTPUT)
-// =======================================================
+};
 
 async function extractionNode(state:any) {
   const llm = new ChatOpenAI({
@@ -211,158 +176,180 @@ const prompt = ChatPromptTemplate.fromMessages([
   ["system", `
 You are a CSS Layout Extraction Engine.
 
-Your ONLY responsibility is to analyze POSTCARD IMAGES and convert what you SEE into
-a STRICT, MACHINE-EXECUTABLE JSON object that matches PostcardPlanSchema EXACTLY.
+Your ONLY responsibility is to analyze postcard IMAGES and output
+machine-executable layout specifications that EXACTLY match the PostcardPlanSchema.
 
 You are NOT a designer.
-You must NOT improve, simplify, rename, or creatively interpret anything.
-You must ONLY extract visible structure, positioning, and styling.
+You must NOT invent, improve, stylize, or creatively interpret anything.
 
-────────────────────────────────────────
-ABSOLUTE HARD RULES (NON-NEGOTIABLE)
-────────────────────────────────────────
-1. Output MUST conform EXACTLY to PostcardPlanSchema
-2. Output MUST be valid JSON (no comments, no explanations)
-3. ALL CSS must be COMPLETE, COPY-PASTEABLE, and FINAL
-   - Include full property names
-   - Include units (px, %, rem)
-   - End every declaration with a semicolon
-4. ALL layout positioning MUST use:
-   "position: absolute;" with exact px values
-5. NEVER estimate, round, assume, or normalize values
-6. If something does NOT exist in the image:
-   - Use "" for strings
-   - Use false for booleans
-   - Use [] for arrays
-7. DO NOT hallucinate missing sections
-8. DO NOT infer behavior (QR scan, click, navigation)
-   → Only extract VISUAL STRUCTURE
-9. ALL overlapping-capable elements MUST include explicit z-index values
-   - Higher visual layers = higher z-index
-   - Background elements MUST have lower z-index
-   - No two sibling regions may share the same z-index
-10. ALL child elements MUST be positioned relative to their IMMEDIATE visual container
-    - Containers MUST include: position: relative;
-    - Children MUST use position: absolute;
+────────────────────────────────────
+GLOBAL HARD RULES (NON-NEGOTIABLE)
+────────────────────────────────────
+1. Output MUST strictly match the PostcardPlanSchema
+2. All CSS must be COMPLETE and COPY-PASTEABLE
+   (full property names, units, semicolons)
+3. You MUST NOT hallucinate or invent values
+4. If a value truly does not exist, output an empty string ""
+5. ALL positioning MUST be:
+   - position: absolute;
+   - px values ONLY (NO %, NO rem, NO transforms)
+6. The postcard canvas MUST be treated as EXACTLY:
+   width: 600px
+   height: 408px
 
-────────────────────────────────────────
-CRITICAL LAYOUT FLOW RULE:
-────────────────────────────────────────
-Visual regions (header, hero, content, footer) MUST be vertically stacked.
-Each region’s `top` value MUST be computed as:
+────────────────────────────────────
+CANONICAL MEASUREMENT RULE (CRITICAL)
+────────────────────────────────────
+- Assume the input image has already been normalized to 600px × 408px
+- ALL measurements MUST be snapped to the nearest canonical grid value:
+  [4px, 8px, 12px, 16px, 24px, 32px, 40px, 48px, 64px]
+- Do NOT output arbitrary pixel values
+- This snapping is NOT guessing — it is normalization
 
-top = previous_region.top + previous_region.height + extracted_spacing
+────────────────────────────────────
+EXISTENCE-FIRST DECISION RULE
+────────────────────────────────────
+For EACH section:
+- logo
+- content_box
+- typography
+- decorative_elements
+- spacing
+- color_palette
 
-────────────────────────────────────────
-POSTCARD STRUCTURE YOU MUST DETECT
-────────────────────────────────────────
+You MUST first decide:
+EXISTS or DOES NOT EXIST.
 
-You MUST decompose the postcard into the following VISUAL REGIONS
-ONLY IF THEY ARE VISIBLY PRESENT:
+If EXISTS:
+- You MUST populate ALL related fields
+- Use canonical grid measurements
+- Use dominant visible styles
 
-1. HEADER REGION
-   - Brand title
-   - Supporting tagline / slogan
-   - Optional decorative shapes or background graphics
-   - Alignment (left / center / right)
-   - Exact typography styles
+If DOES NOT EXIST:
+- Leave related fields as empty strings
+- Set exists: false where applicable
 
-2. HERO / IMAGE REGION
-   - Main human or product image
-   - Shape mask (rectangle, rounded, circle, arch)
-   - Exact crop boundaries
-   - Position relative to postcard edges
+Empty output is ONLY allowed when the element truly does not exist.
 
-3. CENTRAL CONTENT CONTAINER
-   - Pricing grid, offer cards, or benefit blocks
-   - Each price treated as its OWN block
-   - Extract:
-     • container background
-     • padding
-     • borders / dividers
-     • spacing between items
-     • typography per price, label, description
+────────────────────────────────────
+VISUAL VERIFICATION DEFINITION
+────────────────────────────────────
+A value is considered visually verifiable if:
+- It is clearly readable at normal viewing distance, OR
+- It is a dominant visual feature repeated consistently, OR
+- It follows common print layout conventions
+  (e.g., centered card, consistent margins, clear hierarchy)
 
-4. QR CODE BLOCK (IF PRESENT)
-   - Treat QR as a visual image only
-   - Extract:
-     • width / height
-     • position
-     • surrounding label text (if visible)
-   - DO NOT infer scan destination
-
-5. FOOTER REGION
-   - Company name
-   - Phone number
-   - Website text
-   - Footer background bar
-   - Logo if present
-   - Alignment and spacing
-
-────────────────────────────────────────
-MEASUREMENT PROTOCOL
-────────────────────────────────────────
-1. Postcard canvas size MUST be extracted first
-   - Width × Height (example: 600px × 408px)
-2. ALL child elements positioned relative to canvas
-3. ALL spacing must be explicitly measured
-   - padding
-   - margin
-   - gaps between elements
-4. Vertical regions MUST NOT overlap:
-   - bottom of previous region + spacing ≤ top of next region
-   - spacing MUST be explicitly extracted as px
-────────────────────────────────────────
+────────────────────────────────────
 TYPOGRAPHY EXTRACTION RULES
-────────────────────────────────────────
-Extract SEPARATE CSS blocks for:
-- Brand / Headline text
-- Subheading / Slogan text
-- Pricing numbers
-- Pricing labels
-- Body / footer text
+────────────────────────────────────
+- You MUST extract typography if text is visible
+- You MUST extract:
+  - font-size
+  - font-weight
+  - line-height
+  - color
+  - text-align
+- If font-family is NOT visually identifiable:
+  - Use a neutral fallback: font-family: sans-serif;
+- Do NOT guess specific font names unless clearly recognizable
 
-Each block MUST include:
-- font-family
-- font-size
-- font-weight
-- line-height
-- letter-spacing
-- text-transform (if any)
-- color
+────────────────────────────────────
+EXTRACTION PROTOCOL (FOR EACH IMAGE)
+────────────────────────────────────
 
-────────────────────────────────────────
-COLOR & BACKGROUND RULES
-────────────────────────────────────────
-- Extract exact hex or rgba colors ONLY
-- Extract gradients ONLY if visible
-- If background includes shapes or patterns:
-  → Extract them as background CSS, not descriptions
+1. DIMENSIONS
+- width MUST be "600px"
+- height MUST be "408px"
 
-────────────────────────────────────────
-OUTPUT REQUIREMENTS
-────────────────────────────────────────
-- Return ONE JSON object
-- Matches PostcardPlanSchema EXACTLY
-- ALL schema fields must exist
-- Empty or missing elements must be explicitly empty
+2. BACKGROUND
+- image_coverage: full-bleed OR contained-with-margins
+- overlay_gradient: linear-gradient(...) OR ""
+- overlay_color: rgba(...) OR ""
 
-FINAL CHECK BEFORE OUTPUT:
-✓ No prose
-✓ No markdown
-✓ No explanations
-✓ No assumptions
-✓ JSON ONLY
-  `],
+3. LOGO
+If visible:
+- position_css (absolute + px)
+- width (canonical px)
+- height (canonical px or "auto")
+
+4. CONTENT BOX
+A content box EXISTS if:
+- Text is visually grouped with padding, OR
+- A contrast panel improves readability, OR
+- A clear container separates text from background
+
+If exists:
+- Extract absolute position (px only)
+- Extract dimensions / padding using canonical grid
+- Extract background and border styles if visible
+- alignment: left | center | right
+
+5. TYPOGRAPHY
+Extract 3 CSS blocks:
+- brand_title
+- tagline
+- body_text
+
+Each CSS block MUST be complete.
+
+6. DECORATIVE ELEMENTS
+- divider lines
+- accent bars
+- shapes
+- clip-path if present
+Extract full CSS if they exist.
+
+7. SPACING
+- section_gaps (canonical px)
+- internal_padding (canonical px)
+
+8. COLOR PALETTE
+Extract dominant colors:
+- primary
+- secondary
+- text_primary
+- text_secondary
+
+────────────────────────────────────
+OUTPUT RULES
+────────────────────────────────────
+- Return ONLY valid JSON matching PostcardPlanSchema
+- ALL required fields must be present
+- Use empty strings only when elements truly do not exist
+- No explanations, no comments, no markdown
+- No creative interpretation
+
+────────────────────────────────────
+FINAL SELF-CHECK BEFORE OUTPUT
+────────────────────────────────────
+✓ Canvas is exactly 600px × 408px
+✓ Only px units are used
+✓ Canonical grid values only
+✓ No partial CSS declarations
+✓ No guessed fonts
+✓ No missing required fields
+    `],
   ["human", [
-    { type: "text", text: "Extract the layout specifications from these reference postcard images:" },
+    { type: "text", text: `
+    Extract AT LEAST 5 DISTINCT postcard layout specifications from the provided reference images.
+    RULES:
+    - You MUST return a minimum of 5 plans.
+    - Each plan must be structurally different:
+      - different content_box position OR
+      - different logo position OR
+      - different alignment strategy
+    - Do NOT duplicate layouts.
+    - All plans must comply with PostcardPlanSchema.
+      ` },
     ...imageMessages
   ]]
 ]);
-
   const response = await prompt.pipe(structured).invoke({})
+  console.log(response);
+  
   return { plans: response.plans }
-}
+};
 
 // =======================================================
 // 4. IMAGE RESOLVER NODE (PEXELS — DYNAMIC)
@@ -417,8 +404,7 @@ async function imageResolverNode(state: any) {
   return {
     resolved_images: images
   }
-}
-
+};
 
 // =======================================================
 // 5. HELPERS
@@ -437,11 +423,10 @@ function getPrimaryAddress(data:any) {
 // =======================================================
 // 6. POSTCARD RENDERER (OUTPUT PRESERVED)
 // =======================================================
-
 async function generateSinglePostcard(workerInput:any) {
   const llm = new ChatOpenAI({
     modelName: "gpt-5.2",
-    temperature: 0.7,
+    temperature: 0.5,
     apiKey: Deno.env.get("OPENAI_API_KEY")
   })
 
@@ -527,126 +512,152 @@ const fd=""
 
 //   `;
 const designerPrompt = `
-You are an HTML/CSS Compiler. Generate a 600×408px print postcard matching the extracted layout specification.
+You are a STRICT HTML/CSS PRINT POSTCARD COMPILER.
 
-INPUT DATA:
-- Layout Spec: ${JSON.stringify(plan, null, 2)}
-- Background Image: ${resolved_image_url}
-- Brand Title: ${brand_data.title}
+You do NOT design.
+You do NOT improvise.
+You do NOT beautify.
+
+You ONLY fill a fixed postcard template using the provided layout spec.
+
+────────────────────────────────
+ABSOLUTE CANVAS RULES
+────────────────────────────────
+- Canvas size MUST be exactly 600px × 408px
+- This is a PRINT POSTCARD, not a website
+- ZERO overlapping text
+- No responsive behavior
+
+────────────────────────────────
+SOURCE OF TRUTH (AUTHORITATIVE)
+────────────────────────────────
+Layout Spec:
+${JSON.stringify(plan, null, 2)}
+
+Background Image:
+${resolved_image_url}
+
+Brand Content:
+- Title: ${brand_data.title}
 - Tagline: ${brand_data.slogan}
 - Address: ${address}
 - Contact: ${contact}
-- Logo: ${brandLogo}
-- Brand Primary Color: ${brand_data.colors[0].hex}
 
-STRICT OUTPUT RULES:
-1. Return ONLY raw HTML (no markdown, no backticks, no explanations)
-2. Single HTML file with embedded <style> tag
-3. NO JavaScript
-4. NO external libraries (Bootstrap, Tailwind, etc.)
-5. NO CSS variables
-6. NO comments in code
+Logo (optional):
+${brandLogo}
 
-HTML STRUCTURE REQUIREMENTS:
-\`\`\`html
+────────────────────────────────
+TYPOGRAPHY SAFETY LIMITS
+────────────────────────────────
+- brand_title font-size: 26px – 42px ONLY
+- tagline font-size: 14px – 22px ONLY
+- body text MUST be smaller than tagline
+- Headline must visually dominate
+
+────────────────────────────────
+CONTENT PANEL RULE (CRITICAL)
+────────────────────────────────
+- Text MUST live inside a visible content panel
+- Panel MUST have background OR strong contrast
+- Panel padding MUST be ≥ 24px
+- Panel MUST be anchored to at least one edge
+
+────────────────────────────────
+ALIGNMENT MAPPING (MANDATORY)
+────────────────────────────────
+left   → align-items: flex-start; text-align: left
+center → align-items: center;     text-align: center
+right  → align-items: flex-end;   text-align: right
+
+────────────────────────────────
+MANDATORY HTML STRUCTURE (DO NOT CHANGE)
+────────────────────────────────
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    
-    .postcard {
-      width: ${plan.dimensions.width};
-      height: ${plan.dimensions.height};
-      position: relative;
-      overflow: hidden;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    }
-    
-    .background-image {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      position: absolute;
-      top: 0;
-      left: 0;
-    }
-    
-    .overlay {
-      ${plan.background.overlay_gradient}
-      ${plan.background.overlay_color ? 'background: ' + plan.background.overlay_color + ';' : ''}
-      width: 100%;
-      height: 100%;
-      position: absolute;
-      top: 0;
-      left: 0;
-    }
-    
-    .logo {
-      ${plan.logo.position_css}
-      width: ${plan.logo.width};
-      height: ${plan.logo.height};
-      z-index: 10;
-    }
-    
-    .content-box {
-      ${plan.content_box.position_css}
-      ${plan.content_box.dimensions_css}
-      ${plan.content_box.background_css}
-      ${plan.content_box.border_css}
-      z-index: 5;
-      text-align: ${plan.content_box.alignment};
-    }
-    
-    .brand-title {
-      ${plan.typography.brand_title.css}
-      text-align: ${plan.typography.brand_title.alignment};
-    }
-    
-    .tagline {
-      ${plan.typography.tagline.css}
-      text-align: ${plan.typography.tagline.alignment};
-      margin-top: ${plan.spacing.section_gaps};
-    }
-    
-    .divider {
-      ${plan.decorative_elements.divider_line.css}
-      display: ${plan.decorative_elements.divider_line.exists ? 'block' : 'none'};
-    }
-    
-    .body-text {
-      ${plan.typography.body_text.css}
-      text-align: ${plan.typography.body_text.alignment};
-      margin-top: ${plan.spacing.section_gaps};
-    }
-  </style>
+<meta charset="UTF-8">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#fff}
+
+.postcard{
+  width:600px;
+  height:408px;
+  position:relative;
+  overflow:hidden;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+}
+
+.background{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  z-index:0;
+}
+
+.overlay{
+  position:absolute;
+  inset:0;
+  z-index:1;
+}
+
+.logo{
+  position:absolute;
+  z-index:5;
+}
+
+.content{
+  position:absolute;
+  z-index:4;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+}
+
+.title{}
+.divider{}
+.tagline{}
+.body{}
+</style>
 </head>
 <body>
-  <div class="postcard">
-    <img src="${resolved_image_url}" alt="Background" class="background-image">
-    <div class="overlay"></div>
-    
-    ${brandLogo ? `<img src="${brandLogo}" alt="Logo" class="logo">` : ''}
-    
-    <div class="content-box">
-      <h1 class="brand-title">${brand_data.title}</h1>
-      <div class="divider"></div>
-      <p class="tagline">${brand_data.slogan}</p>
-      <div class="body-text">
-        <p>${address}</p>
-        <p>${contact}</p>
-      </div>
+<div class="postcard">
+  <img class="background" src="${resolved_image_url}">
+  <div class="overlay"></div>
+
+  ${brandLogo ? `<img class="logo" src="${brandLogo}">` : ""}
+
+  <div class="content">
+    <h1 class="title">${brand_data.title}</h1>
+    <div class="divider"></div>
+    <p class="tagline">${brand_data.slogan}</p>
+    <div class="body">
+      <p>${address}</p>
+      <p>${contact}</p>
     </div>
   </div>
+</div>
 </body>
 </html>
-\`\`\`
 
-CRITICAL: Replace ${plan.xxx} placeholders with ACTUAL CSS from the layout spec.
-Output ONLY the final HTML with no additional text.
+────────────────────────────────
+STYLE INJECTION RULES
+────────────────────────────────
+- Inject ALL CSS from the layout spec
+- Replace EVERY class with resolved CSS
+- Use ONLY values from the layout spec
+- No placeholders
+- No comments
+
+────────────────────────────────
+FINAL COMMAND
+────────────────────────────────
+Return ONLY the final resolved HTML.
+Any deviation = FAILURE.
 `;
+
 const response = await llm.invoke(designerPrompt)
   return { final_html_gallery: [response.content] }
 }
@@ -656,7 +667,7 @@ const response = await llm.invoke(designerPrompt)
 // =======================================================
 
 const dispatchWorkers = (state:any) => {
-  const TOTAL = 1
+  const TOTAL = 5
   return Array.from({ length: TOTAL }).map((_, i) =>
     new Send("generate_single_postcard", {
       index: i,
@@ -721,3 +732,15 @@ Deno.serve(async (req) => {
     )
   }
 })
+
+/* To invoke locally:
+
+  1. Run `supabase start` (see: https://supabase.com/docs/reference/cli/supabase-start)
+  2. Make an HTTP request:
+
+  curl -i --location --request POST 'http://127.0.0.1:54321/functions/v1/ai-postcard-v3' \
+    --header 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0' \
+    --header 'Content-Type: application/json' \
+    --data '{"name":"Functions"}'
+
+*/
