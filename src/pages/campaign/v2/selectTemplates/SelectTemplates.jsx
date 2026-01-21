@@ -31,8 +31,11 @@ const SelectTemplates = () => {
     const getAigeneraterPostCards = async () => {
       try {
         console.log("brandData---->", apiResponse.brand)
-        const { data, error } = await supabase.functions.invoke('ai-postcard-v3', {
-          body: { brand:apiResponse.brand,images:["https://imp-ovl.s3.us-east-1.amazonaws.com/Dental-5.png?response-content-disposition=inline&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Security-Token=IQoJb3JpZ2luX2VjENb%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FwEaCXVzLWVhc3QtMSJHMEUCIQC3PIZz12PW6GaJv%2FPG7AO9GQcatq7pDz6Prk95cuavKAIgTxgaZBOUwQJ08m%2Fr0v4%2FMM3J2Af7nnLTNaJKAqBwKvoqwgMIn%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FARAAGgw5NjM1NjcyNzA0NDIiDC%2FKAT%2FUstdlWYJScSqWA136mu6mxPRgsloBlvvws3lRMhVwwwj8ZhEWk75t6VCyelAxWr9MLn%2BJYysHJP%2B3cC6ktJTxe7cM%2FcApUQ4jJOFekPHO1%2B74JxE9v9KXW6sGsm86JTR39AcWwYxu2OgtzPpyKYOvJcmfpOiTLEMKOFiQDUxZUrZ3F3Jmji6ZMoXGFoN%2BYjlWt7jTrB9aERo0Nwf7m2fs1WjdwUDetchzTpQ3rB%2B%2BF2Vvf0Pp9xAjdar%2Bri430bdRG50E0fLHF1LUKJcKROpHvmi6xrw32i14iw0jkzAvqL9BT%2F3WQtuBt19DdSKsTfPuLuebxSfeJo4CFptPWnSfhlB%2Ft%2FLKz%2BpQb8ZfO%2BHU1TnvrFCt8sTBhdOO278UA5bYK7Wn2xHiuGVw7PR56VmpgcfS9PlXHHHrgKcwBeb%2BZp1Pw5IrPKIyxYdg95U3ehaUCtGOMEoBoS0TbV%2F1pKgUeMW1fCE1m2lcc%2FEvUXrstbmgwk0ZalHUzqZrsVBrwK6lSsD4v28bGEVqelocelbtKBRLEGS6TTqwiDn3cDba6NUwi6uCywY63gLrVuDaLhtZrKM%2F7JBJPdXvfuBSurs2zRk9ZYlVJdNAp6GQn%2F8wYnif%2BJFCNRVEcr8H%2FWklzJYNiM%2FDsKutuyS6%2BTPkwI48JW920C1jcDLn1JRBC88ZfMhWGC3lHkZxnWV6P7fxLIlv6zqd2J%2F5spNXJUAD4toL6aA43PncCsyJ9lHrAtxl3bpnf%2FpfT2EFpyaOeCAtQFTJ3xDuIGAVpn%2B1d54URrkAsIYhaHp6M5vu0YLx%2FoJ0gNXWQjO1mWAIqXcKvK90M6f4XHbUrnaPxxY%2BBktQ5zzmHgg0sgQKYACaIPyWkwz74mRiLV6llQ84W%2FzXG8PfmrM%2FYzZFWTPNO2st7WK2a8365s7dDrbtqGv2h01y9QvghoA%2BDTRIb7lQpolI%2B4iO7y6PbjQ0ZVZSymyy1fkIjEF%2BOeYFCllqPFniNPCNPAGYdm7QDQN0XA8t%2Fw8v2hBY2s5t3U40i2ZJYw%3D%3D&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=ASIA6AWIVXIVKXJKOHMS%2F20260109%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260109T054559Z&X-Amz-Expires=43200&X-Amz-SignedHeaders=host&X-Amz-Signature=7270257d18d101fbcd3201a51fa379beb675cfd9ab578c2c6b36572b9a555889",
+        const { data, error } = await supabase.functions.invoke('ai-postcard-generator', {
+          body: { brand:apiResponse.brand,images:[
+            "https://www.postcardmania.com/wp-content/uploads/designs/img/DNT-GEN-1054.jpg",
+            "https://www.postcardmania.com/wp-content/uploads/designs/img/Dental-Postcard-with-Coupon-Offers-DNT-GEN-1053.jpg",
+            "https://www.postcardmania.com/wp-content/uploads/designs/img/Healthy-Teeth-Postcard-Samples-DNT-GEN-1044.jpg"
           ]  },
         })
         if(error){
@@ -41,18 +44,13 @@ const SelectTemplates = () => {
         }
         console.log("ai generated postcards----->", data);
 
-const cleanHtmlDataList = data.postcards.map(card => {
-  const cleanHtmlContent= card
-    .replace(/^```html\s*/i, '')
-    .replace(/```$/i, '')
-    .replace(/\\n/g, '\n')
-    .replace(/\\"/g, '"')
-    .trim();
-
+const cleanHtmlDataList = data.postcards.map(item => {
     return {
       id: crypto.randomUUID(),
       template_id: crypto.randomUUID(),
-      html: cleanHtmlContent,
+      html: item.htmlData,
+      welcomeMessage: item?.welcomeMessageData,
+      tagline:item?.taglineData,
       metadata: ""
     };
 });
@@ -598,7 +596,7 @@ console.log("cleanHtmlList----->", cleanHtmlDataList);
         };
 
         /* Here I'm Invoking The Generate MetaData PaRt */
-        const { data, error } = await supabase.functions.invoke("ai-generate-metadata", {
+        const { data, error } = await supabase.functions.invoke("ai-generate-metadata-v2", {
           body: {
             metaData: referenceMetaData,
             html

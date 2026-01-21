@@ -237,7 +237,8 @@ ABSOLUTE HARD RULES (NON-NEGOTIABLE)
 7. DO NOT hallucinate missing sections
 8. DO NOT infer behavior (QR scan, click, navigation)
    → Only extract VISUAL STRUCTURE
-9. ALL overlapping-capable elements MUST include explicit z-index values
+9. ALL overlapping-capable 
+elements MUST include explicit z-index values
    - Higher visual layers = higher z-index
    - Background elements MUST have lower z-index
    - No two sibling regions may share the same z-index

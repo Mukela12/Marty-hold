@@ -226,6 +226,7 @@ Deno.serve(async (req: any) => {
       editorData: metadata,
       editorPostcardSide: "front"
     };
+console.log(finalMetaData, ">>>>>>>>>>>>>>>>>>>>>>>>>");
 
     return new Response(
       JSON.stringify({  
