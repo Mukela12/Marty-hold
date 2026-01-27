@@ -41,146 +41,132 @@ You are a **PostGrid EditorData Reconstruction Engine**.
 ================================================================================
 ABSOLUTE CONTEXT (NON-NEGOTIABLE)
 ================================================================================
-- This output is for a **PRINT POSTCARD**, NOT a website, NOT a UI mockup.
-- The PostGrid editor consumes a strict JSON schema named **editorData**.
-- At input time, **editorData DOES NOT EXIST** and must be generated from scratch.
-- Any deviation from PostGrid schema rules is a FAILURE.
+- Output is for a **PRINT POSTCARD (6 x 4 inches)**.
+- NOT a website, NOT a UI mockup, NOT responsive.
+- editorData DOES NOT EXIST at input time.
+- You MUST generate editorData from scratch.
+- Any schema violation or layout overflow is a FAILURE.
 
 ================================================================================
-CANVAS (LOCKED — MUST BE RESPECTED)
+CANVAS (PRINT-LOCKED — SINGLE SOURCE OF TRUTH)
 ================================================================================
-- Width: 600 px
-- Height: 408 px
+- Physical size: 6 x 4 inches
+- DPI: 72
+- Width: 432 px
+- Height: 288 px
 - Unit: px
-- Do NOT exceed canvas bounds.
-- Do NOT place elements outside the visible area.
+- ALL elements MUST be fully inside this area
+- NO overflow, NO clipping, NO scaling outside bounds
 
 ================================================================================
 PRIMARY OBJECTIVE
 ================================================================================
-Generate a **COMPLETE, VALID, and RENDERABLE** \`editorData\` JSON object by
-reconstructing the visual layout described in the provided HTML.
-
-The output MUST render correctly inside the PostGrid editor without:
-- overlaps
-- missing styles
-- broken hierarchy
-- invalid defaults
+Generate a **COMPLETE, VALID, RENDERABLE editorData JSON** that:
+- Fits entirely within 432 x 288
+- Has ZERO overlaps
+- Preserves HTML hierarchy and grouping
+- Is print-safe and editable in PostGrid
 
 ================================================================================
-INPUT SOURCES (STRICT PRIORITY)
+INPUT AUTHORITY (STRICT)
 ================================================================================
-1. **HTML INPUT (SOURCE OF TRUTH)**
-   - Defines ALL:
-     • text content
-     • images
-     • visual hierarchy
-     • spatial relationships
-     • relative sizing
+1. HTML INPUT — SOURCE OF TRUTH
+   - Defines text, images, grouping, hierarchy, alignment
 
-2. **SAMPLE editorData (REFERENCE ONLY)**
-   - Use ONLY to learn:
-     • JSON structure
-     • supported element types
-     • required properties
-     • default flags and editor settings
-
-⚠️ The SAMPLE is NOT a design reference.
+2. SAMPLE editorData — STRUCTURE ONLY
+   - Learn schema and required flags ONLY
+   - DO NOT copy values, sizes, or proportions
 
 ================================================================================
 STRICT PROHIBITIONS
 ================================================================================
 DO NOT:
-- Copy IDs from the sample
-- Copy x / y / width / height values from the sample
-- Copy text, images, colors, or fonts from the sample
-- Assume the sample layout matches the HTML
+- Copy IDs or dimensions from sample
 - Invent content not present in HTML
+- Output markdown, comments, or explanations
 - Output partial JSON
-- Output explanations, comments, or markdown
 
 ================================================================================
-MANDATORY RECONSTRUCTION RULES
+MANDATORY OUTPUT RULES
 ================================================================================
-1. Output MUST be **valid JSON**
-2. Output MUST contain **ONLY editorData**
-3. Exactly **ONE page**
-4. Use **NUMERIC VALUES ONLY** for:
-   - x, y, width, height
-5. Elements MUST NOT overlap
-6. Maintain correct visual stacking order:
-   background → images → text → foreground
-7. Every element MUST include ALL required PostGrid properties
-8. If a property is not applicable, KEEP its default value
-9. Generate NEW, UNIQUE IDs for every element
-10. ALL editor flags MUST be present:
-    - draggable
-    - selectable
-    - removable
-    - resizable
-    - visible
-    - showInExport
-    - styleEditable
-11. NO HTML, NO CSS, NO comments, NO explanations
+1. Output ONLY valid JSON
+2. Exactly ONE page
+3. x, y, width, height MUST be numbers
+4. Elements MUST NOT overlap
+5. Stack order:
+   background → figures → images → text
+6. ALL editor flags MUST be present:
+   draggable, selectable, removable,
+   resizable, visible, showInExport, styleEditable
+7. Generate NEW unique IDs for every element
 
 ================================================================================
-LAYOUT STABILITY RULES (CRITICAL)
+TEXT SIZE & BOUNDING RULES (CRITICAL)
 ================================================================================
-- Respect padding and spacing implied by HTML
-- Preserve text alignment and grouping
-- Do NOT stretch text or images unnaturally
-- Avoid tight bounding boxes that may cause clipping
-- Ensure safe spacing between adjacent elements
-- Prefer balanced layouts over edge-aligned placement
+- Text MUST NEVER overflow its bounding box
+- Font size MUST be derived from available space
+- Text boxes MUST be sized using these rules:
+
+TEXT BOX HEIGHT RULE:
+- height ≥ fontSize × lineCount × 1.3
+
+TEXT BOX WIDTH RULE:
+- width ≥ 0.6 × fontSize × maxCharsPerLine
+
+HEADLINE RULES:
+- Max fontSize: 64 px
+- Max text height: 96 px
+- If text length > 8 characters → wrap into multiple lines
+- Headline MUST NOT dominate more than its container
+
+MINIMUM FONT SIZE:
+- Minimum fontSize allowed: 12 px
+- If content cannot fit → reduce fontSize first, then increase height
 
 ================================================================================
-ELEMENT EXTRACTION REQUIREMENTS
+LAYOUT SAFETY RULES
 ================================================================================
-From the HTML, extract and reconstruct:
-- ALL visible text blocks
-- ALL images
-- ALL solid shapes or decorative elements
-- Background or framing elements if visually present
-
-================================================================================
-ELEMENT TYPE MAPPING
-================================================================================
-- Text content        → type: "text"
-  • properties: text, fontFamily, fontSize, fill, alignment
-
-- Images              → type: "image"
-  • properties: src, crop, size, position
-
-- Decorative shapes   → type: "figure"
-
-- Background frames /
-  layout guides       → type: "guideline"
+- Maintain minimum 12 px padding from canvas edges
+- Avoid tight boxes that risk clipping
+- Prefer vertical stacking over crowding
+- Layout must look balanced and print-safe
 
 ================================================================================
-OUTPUT FORMAT (EXACT — DO NOT WRAP)
+ELEMENT EXTRACTION
+================================================================================
+Reconstruct ALL visible elements from HTML:
+- Text blocks → type: "text"
+- Images → type: "image"
+- Decorative shapes → type: "figure"
+- Frames/containers → type: "guideline"
+
+DO NOT invent decorative elements.
+
+================================================================================
+OUTPUT FORMAT (EXACT)
 ================================================================================
 {
   "audios": [],
   "dpi": 72,
   "fonts": [],
-  "height": 408,
+  "height": 288,
   "pages": [
     {
       "id": "generated_page_id",
       "background": "white",
       "bleed": 0,
-      "children": [ /* reconstructed elements */ ],
+      "children": [],
       "duration": 5000,
       "height": "auto",
       "width": "auto"
     }
   ],
   "unit": "px",
-  "width": 600
+  "width": 432
 }
 
 ================================================================================
-SAMPLE editorData (REFERENCE ONLY)
+SAMPLE editorData (STRUCTURE ONLY)
 ================================================================================
 ${metaData}
 
@@ -189,6 +175,8 @@ HTML INPUT (SOURCE OF TRUTH)
 ================================================================================
 ${html}
 `;
+
+
 
 
 return generateMetadataWithRetry(llm, prompt);

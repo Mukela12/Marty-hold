@@ -31,31 +31,35 @@ const SelectTemplates = () => {
     const getAigeneraterPostCards = async () => {
       try {
         console.log("brandData---->", apiResponse.brand)
-        const { data, error } = await supabase.functions.invoke('ai-postcard-generator', {
-          body: { brand:apiResponse.brand,images:[
-            "https://www.postcardmania.com/wp-content/uploads/designs/img/DNT-GEN-1054.jpg",
-            "https://www.postcardmania.com/wp-content/uploads/designs/img/Dental-Postcard-with-Coupon-Offers-DNT-GEN-1053.jpg",
-            "https://www.postcardmania.com/wp-content/uploads/designs/img/Healthy-Teeth-Postcard-Samples-DNT-GEN-1044.jpg"
-          ]  },
-        })
+        const { data, error } = await supabase.functions.invoke('postcard-html-generator', {
+          body: {
+            "images": [
+              "https://www.postcardmania.com/wp-content/uploads/designs/img/Pediatric-Dentist-Postcard-DNT-CHI-1006.jpg",
+              "https://www.postcardmania.com/wp-content/uploads/designs/img/Pediatric-Dental-Postcard-Sample-DNT-CHI-1001.jpg",
+              "https://www.postcardmania.com/wp-content/uploads/designs/img/Pediatric-Dentist-Postcard-Brushing-Teeth-DNT-CHI-1003.jpg"
+            ],
+            "brand": apiResponse.brand
+          },
+        });
+        const parsedData = typeof data === 'string' ? JSON.parse(data) : data;
+        const htmlContent = parsedData.html;
+        console.log(htmlContent);
+        
         if(error){
-
           throw new Error("Error in getting AI generated postcards")
         }
-        console.log("ai generated postcards----->", data);
 
-const cleanHtmlDataList = data.postcards.map(item => {
-    return {
-      id: crypto.randomUUID(),
-      template_id: crypto.randomUUID(),
-      html: item.htmlData,
-      welcomeMessage: item?.welcomeMessageData,
-      tagline:item?.taglineData,
-      metadata: ""
-    };
-});
+        const cleanHtmlDataList = data.postcards.map(item => {
+            return {
+              id: crypto.randomUUID(),
+              template_id: crypto.randomUUID(),
+              html: item.html,
+              welcomeMessage: item?.welcomeMessageData,
+              tagline:item?.taglineData,
+              metadata: ""
+            };
+        });
 
-console.log("cleanHtmlList----->", cleanHtmlDataList);
         return cleanHtmlDataList;
       } catch (error) {
         console.log("error---->", error.message)
@@ -596,7 +600,7 @@ console.log("cleanHtmlList----->", cleanHtmlDataList);
         };
 
         /* Here I'm Invoking The Generate MetaData PaRt */
-        const { data, error } = await supabase.functions.invoke("ai-generate-metadata-v2", {
+        const { data, error } = await supabase.functions.invoke("ai-generate-metadata", {
           body: {
             metaData: referenceMetaData,
             html
