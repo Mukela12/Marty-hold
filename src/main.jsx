@@ -8,7 +8,7 @@ import { AuthProvider } from './contexts/AuthContext.jsx';
 import { BrandDevProvider } from './contexts/BrandDevContext.jsx';
 
 createRoot(document.getElementById('root')).render(
-  <StrictMode>
+  // <StrictMode>
     <BrowserRouter>
       <AuthProvider>
       <BrandDevProvider>
@@ -19,5 +19,5 @@ createRoot(document.getElementById('root')).render(
 
     </BrowserRouter>
 
-  </StrictMode>,
+  // </StrictMode>
 )

@@ -70,6 +70,8 @@ const getBrandFetchApiDetails = async(url)=>{
       throw new Error("Supabase Error:", error);
     }
     const{data} =brandDevResponse;
+    console.log(data, ">>>>>>>>>>>>>>>>>>>>>>>>>");
+    
     return data;
   } catch (error) {
     throw error;

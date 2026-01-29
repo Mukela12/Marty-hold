@@ -31,13 +31,13 @@ const SelectTemplates = () => {
     const getAigeneraterPostCards = async () => {
       try {
         console.log("brandData---->", apiResponse.brand)
+        console.log("brandData---->", apiResponse.brand.masterCategory)
+        const getSampleTemplate = await getSampleUrl(apiResponse.brand.masterCategory);
+        console.log(getSampleTemplate?.image_urls);
+        
         const { data, error } = await supabase.functions.invoke('postcard-html-generator', {
           body: {
-            "images": [
-              "https://www.postcardmania.com/wp-content/uploads/designs/img/Pediatric-Dentist-Postcard-DNT-CHI-1006.jpg",
-              "https://www.postcardmania.com/wp-content/uploads/designs/img/Pediatric-Dental-Postcard-Sample-DNT-CHI-1001.jpg",
-              "https://www.postcardmania.com/wp-content/uploads/designs/img/Pediatric-Dentist-Postcard-Brushing-Teeth-DNT-CHI-1003.jpg"
-            ],
+            "images": getSampleTemplate?.image_urls,
             "brand": apiResponse.brand
           },
         });
@@ -66,6 +66,24 @@ const SelectTemplates = () => {
         console.error(error);
       }
     }
+
+    const getSampleUrl = async (category) => {
+      try {
+        const { data, error } = await supabase
+          .from('master_categories')
+          .select('id, category, description, image_urls, status')
+          .eq('category', category)
+          .limit(1)
+          .single();
+  
+        if (error) {
+          console.error(error);
+        };
+        return data;
+      } catch (error) {
+        console.error(error);
+      };
+    };
 
     /* Get templates from the supabase */
     const getTemplates = async () => {

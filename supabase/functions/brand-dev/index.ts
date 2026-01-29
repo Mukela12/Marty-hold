@@ -44,35 +44,54 @@ async function fetchBrandCategory(brandDetails: any) {
     apiKey: Deno.env.get("OPENAI_API_KEY")
   });
 
-  const prompt = `
+const prompt = `
 You are a business classification engine.
 
-CONTEXT:
-- You receive structured brand metadata
-- Broad industries may be present (e.g., Healthcare)
-- Your job is to infer the MOST SPECIFIC real-world business category
+TASK:
+- Analyze the provided brand metadata
+- Infer a SPECIFIC, descriptive business category
+- Map that category to ONE exact database category from the list below
 
 RULES (NON-NEGOTIABLE):
-- DO NOT return broad industries
+- "brand_category" MUST be a specific real-world business type (e.g., dental care, car dealership, fitness center)
+- "exact_category" MUST be chosen ONLY from the allowed categories list
+- "exact_category" MUST match the category EXACTLY (character-for-character)
+- DO NOT create or modify database category names
+- DO NOT return multiple categories
 - DO NOT explain
-- DO NOT add multiple categories
-- Return ONE exact business category only
+- ALWAYS return one result
 
-EXAMPLES:
-Healthcare → Dental Clinic
-Healthcare → Eye Care Center
-Healthcare → Physiotherapy Clinic
-Food → Restaurant
-Retail → Clothing Store
+ALLOWED DATABASE CATEGORIES (CHOOSE ONE ONLY):
+- Technology & Software
+- Non-Profit & Government
+- Agriculture
+- Construction & Real Estate
+- Media & Entertainment
+- Education & Training
+- Professional Services
+- Travel & Hospitality
+- Energy & Utilities
+- Healthcare & Medical
+- Finance & Insurance
+- Manufacturing & Industrial
+- Retail & Consumer Goods
+- Food & Beverage
+- Sports & Fitness
+- Automotive
+- Logistics & Supply Chain
 
 BRAND DETAILS:
 ${JSON.stringify(brandDetails, null, 2)}
 
 OUTPUT FORMAT (EXACT — JSON ONLY):
 {
-  "brand_category": "<exact category>",
+  "brand_category": "<specific business type inferred from the brand>",
+  "exact_category": "<must be exactly one of the allowed database categories>",
   "confidence": <number between 0 and 1>
-}`;
+}
+`;
+
+
 
   return generateCategoryWithRetry(llm, prompt);
 };
@@ -128,6 +147,7 @@ Deno.serve(async (req: any) => {
     const categoryResult = await fetchBrandCategory(result?.brand);
     const { brand } = result;
     brand['category'] = categoryResult.brand_category;
+    brand['masterCategory'] = categoryResult?.exact_category;
     
     // returning the response
     return jsonResponse({ data: result }, 200);
