@@ -17,9 +17,9 @@ const mapBrandData = (apiResponse, website, companyId, aiSuggestedCategory) => {
   if (!apiResponse.brand) return null;
 
   const brandData = apiResponse.brand;
-
   return {
     name: brandData.title || brandData.domain.split(".")[0],
+    masterCategory: aiSuggestedCategory,
     category: aiSuggestedCategory ||brandData.industries?.eic?.[0]?.industry || "other",
     colors: {
       primary: brandData.colors?.[0]?.hex || "#6366F1",

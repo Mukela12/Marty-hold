@@ -30,9 +30,7 @@ const SelectTemplates = () => {
 
     const getAigeneraterPostCards = async () => {
       try {
-        console.log("brandData---->", apiResponse.brand)
-        console.log("brandData---->", apiResponse.brand.masterCategory)
-        const getSampleTemplate = await getSampleUrl(apiResponse.brand.masterCategory);
+        const getSampleTemplate = await getSampleUrl(brand.masterCategory);
         console.log(getSampleTemplate?.image_urls);
         
         const { data, error } = await supabase.functions.invoke('postcard-html-generator', {
@@ -618,7 +616,7 @@ const SelectTemplates = () => {
         };
 
         /* Here I'm Invoking The Generate MetaData PaRt */
-        const { data, error } = await supabase.functions.invoke("ai-generate-metadata", {
+        const { data, error } = await supabase.functions.invoke("ai-generate-metadata-v2", {
           body: {
             metaData: referenceMetaData,
             html
