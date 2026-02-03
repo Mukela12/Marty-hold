@@ -9,6 +9,7 @@ import "./companyDetails.css"
 import { useForm } from 'react-hook-form';
 import {businessCategories} from './GetCompanyUtils.js';
 import { useBrandDev } from '../../../../contexts/BrandDevContext.jsx';
+import { usePostcards } from '../../../../contexts/PostCardContext.jsx';
 import campaignService from '../../../../supabase/api/campaignService.js';
 import { supabase } from '../../../../supabase/integration/client.js';
 
@@ -30,6 +31,8 @@ const CampaignStep1 = () => {
     setCompanyDomainDetails ,
     clearBrandData       
   } = useBrandDev();
+
+  const { clearCache  } = usePostcards();
 
 
   const {
@@ -142,6 +145,9 @@ const CampaignStep1 = () => {
         }
       };
       saveBrandData(updatedBrand, currentFormValues);
+
+      //clearing the cache for postcards
+      clearCache();
       
       /* creating the campaign */
       const draftCampaign = await campaignService.createCampaign({

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import ProcessLayout from '../../../../components/process/ProcessLayout';
 import PreviewCards from '../../../../components/campaign/PreviewCards';
 import {useBrandDev} from '../../../../contexts/BrandDevContext.jsx'
+import { usePostcards } from '../../../../contexts/PostCardContext.jsx';
 import { Layout, Wand2, Check, Loader2 } from "lucide-react";
 import { supabase } from '../../../../supabase/integration/client';
 import campaignService from '../../../../supabase/api/campaignService.js';
@@ -22,7 +23,8 @@ const SelectTemplates = () => {
     const [aiScores, setAiScores] = useState({}); // Store AI scores
 
     // brand.dev data
-    const { mappedData: brand, apiResponse } = useBrandDev();    
+    const { mappedData: brand, apiResponse } = useBrandDev();
+    const { getOrFetchPostcards, isContextLoading } = usePostcards();  
 
     useEffect(() => {
       initializeTemplates(); 
@@ -121,39 +123,55 @@ const SelectTemplates = () => {
       }
     }
 
-    const initializeTemplates = async () => {
-      try {
-        setLoading(true);
-        // Step 1: Get templates from database
-        const templatesData =await getAigeneraterPostCards()
-        console.log("templatesData--->", templatesData)
-        if(!templatesData||templatesData.length==0){
-          throw new Error("Error in fetching the templates");
-        }
-          // Step 2: Get AI suggestions BEFORE template injection
-          // const aiSuggestions = await getAiSuggestionsForTemplates(templatesData);
+    // const initializeTemplates = async () => {
+    //   try {
+    //     setLoading(true);
+    //     // Step 1: Get templates from database
+    //     const templatesData =await getAigeneraterPostCards()
+    //     console.log("templatesData--->", templatesData)
+    //     if(!templatesData||templatesData.length==0){
+    //       throw new Error("Error in fetching the templates");
+    //     }
           
-          // // Step 3: Store AI scores and sort templates
-          // const templatesWithScores = processAiScoresAndSort(templatesData, aiSuggestions);
+    //       setTemplates(templatesData);
           
-          // // Step 4: Now inject brand data into sorted templates
-          // const processedTemplates = await injectBrandDataIntoTemplates(templatesWithScores);
-          // const maxScore = Math.max(...processedTemplates.map(t => t.score));
-          // const templatesWithFlag = processedTemplates.map(template => ({
-          //   ...template,
-          //   isBestRating: template.score === maxScore
-          // }));
-          
-          setTemplates(templatesData);
-          // setAiResponse(aiSuggestions);
         
-      } catch (error) {
-        toast.error("Failed to load templates");
-      } finally {
-        setLoading(false);
-      }
-    };
+    //   } catch (error) {
+    //     toast.error("Failed to load templates");
+    //   } finally {
+    //     setLoading(false);
+    //   }
+    // };
 
+
+    const initializeTemplates = async () => {
+      if (!brand?.masterCategory || !apiResponse?.brand) throw new Error("No brand data available");
+
+      try {
+          setLoading(true);
+
+          // Step 1: Get sample URLs (Existing logic) for category
+          const getSampleTemplate = await getSampleUrl(brand.masterCategory);
+          if( !getSampleTemplate?.image_urls || !getSampleTemplate?.image_urls.length > 0){
+            throw new Error("No Sample image urls available for the category");
+          }
+          // Step 2: Use the context to get the postcards by AI
+          const data = await getOrFetchPostcards(
+              getSampleTemplate?.image_urls, 
+              apiResponse.brand
+          );
+          
+          if (data) {
+              setTemplates(data);
+          }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message :"Failed to load templates";
+          toast.error(errorMessage);
+          console.error(errorMessage);
+      } finally {
+          setLoading(false);
+      }
+  };
     /* Dynamic Templates */
     const dynamicTemplate = (template) => {
       try {
@@ -616,7 +634,7 @@ const SelectTemplates = () => {
         };
 
         /* Here I'm Invoking The Generate MetaData PaRt */
-        const { data, error } = await supabase.functions.invoke("ai-generate-metadata-v2", {
+        const { data, error } = await supabase.functions.invoke("ai-generate-metadata", {
           body: {
             metaData: referenceMetaData,
             html
