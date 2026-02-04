@@ -32,6 +32,7 @@ import {
   getCurrentAdminId
 } from '../../supabase/api/adminActions';
 import PollingStatusBadge from '../../components/admin/PollingStatusBadge';
+import PostcardPreviewRenderer from '../../components/admin/PostcardPreviewRenderer';
 import toast from 'react-hot-toast';
 import './AdminCampaignDetails.css';
 
@@ -544,34 +545,27 @@ const AdminCampaignDetails = () => {
               <Mail size={20} />
               Postcard Preview
             </h3>
-            <div className="admin-details-preview-container">
-              {campaign.postcard_preview_url ? (
-                <img
-                  src={campaign.postcard_preview_url}
-                  alt="Postcard preview"
-                  className="admin-details-preview-image"
-                  onError={(e) => {
-                    e.target.src = '/template-previews/poster-template-preview.png';
-                  }}
-                />
-              ) : (
-                <div className="admin-details-preview-placeholder">
-                  <Mail size={48} />
-                  <p>No preview available</p>
-                </div>
-              )}
-            </div>
-            <div className="admin-details-template-info">
-              <span className="admin-details-label">Template:</span>
-              <span className="admin-details-value">{campaign.template_name || 'Custom Template'}</span>
-            </div>
-            {campaign.postcard_preview_url && (
+            <PostcardPreviewRenderer
+              previewUrl={campaign.postcard_preview_url}
+              frontHtml={campaign.postcard_front_html}
+              backHtml={campaign.postcard_back_html}
+              templateId={campaign.postgrid_template_id || campaign.master_template_id}
+              backTemplateId={campaign.template_id}
+              templateName={campaign.template_name || (campaign.master_template_id ? 'PostGrid Template' : null)}
+              companyLogo={campaign.companies?.logo_url}
+              companyName={campaign.companies?.name}
+              primaryColor={campaign.companies?.primary_color}
+              size="large"
+              showControls={true}
+            />
+            {(campaign.postcard_preview_url || campaign.postcard_front_html || campaign.master_template_id) && (
               <button
                 className="admin-details-download-preview-btn"
                 onClick={handleDownloadPreview}
+                style={{ marginTop: '16px' }}
               >
                 <Download size={18} />
-                Download Preview
+                {campaign.postcard_preview_url ? 'Download Preview' : 'View in PostGrid'}
               </button>
             )}
           </motion.div>

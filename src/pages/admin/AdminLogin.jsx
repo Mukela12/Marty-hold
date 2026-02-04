@@ -34,7 +34,7 @@ const AdminLogin = () => {
 
         if (profile && (profile.role === 'admin' || profile.role === 'super_admin')) {
           // Already logged in as admin, redirect to dashboard
-          // navigate('/admin/dashboard');
+          navigate('/admin/dashboard');
         }
       }
     } catch (err) {

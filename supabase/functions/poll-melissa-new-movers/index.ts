@@ -44,9 +44,15 @@ interface Campaign {
   target_zip_codes: string[]
   last_polled_at: string | null
   created_at: string
-  postcard_design_url: string
+  approved_at: string | null
+  postcard_design_url: string | null
+  postgrid_template_id: string | null
+  postgrid_back_template_id: string | null
+  postcard_front_html: string | null
+  postcard_back_html: string | null
   postcards_sent: number
   total_cost: number
+  company_id: string | null
 }
 
 interface MelissaMover {
@@ -152,19 +158,72 @@ function transformMelissaData(
 }
 
 /**
+ * Generate default postcard HTML if no template/design available
+ */
+function generateDefaultPostcardHTML(campaign: Campaign, side: 'front' | 'back'): string {
+  if (side === 'front') {
+    return `
+      <html>
+        <head>
+          <style>
+            body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
+            .container { width: 600px; height: 408px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; }
+            .content { text-align: center; color: white; padding: 20px; }
+            h1 { font-size: 36px; margin: 0 0 10px 0; }
+            p { font-size: 18px; margin: 0; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="content">
+              <h1>Welcome to the Neighborhood!</h1>
+              <p>Special offers for new residents</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `.trim()
+  } else {
+    return `
+      <html>
+        <head>
+          <style>
+            body { margin: 0; padding: 20px; font-family: Arial, sans-serif; background: white; }
+            .container { width: 560px; height: 368px; }
+            h2 { font-size: 24px; margin: 0 0 15px 0; color: #333; }
+            p { font-size: 14px; color: #666; line-height: 1.5; }
+            .cta { margin-top: 20px; padding: 10px 20px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; display: inline-block; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <h2>Exclusive New Mover Offer</h2>
+            <p>As a new resident in the area, we'd like to welcome you with a special offer just for you.</p>
+            <p>Visit us today and mention this postcard for exclusive savings!</p>
+            <p style="margin-top: 30px; font-size: 12px; color: #999;">Campaign: ${campaign.campaign_name}</p>
+          </div>
+        </body>
+      </html>
+    `.trim()
+  }
+}
+
+/**
  * Send postcard via PostGrid API
+ * Supports: PostGrid templates, HTML content, or PDF URL
  */
 async function sendPostcard(
   recipient: any,
-  designUrl: string,
-  campaign: Campaign
+  campaign: Campaign,
+  supabase: any
 ): Promise<any> {
   // Parse full name into first/last name
   const nameParts = (recipient.full_name || 'Resident').trim().split(' ')
   const firstName = nameParts[0] || 'Resident'
   const lastName = nameParts.slice(1).join(' ') || ''
 
-  const requestBody = {
+  // Build base request body
+  const requestBody: any = {
     to: {
       firstName: firstName,
       lastName: lastName,
@@ -176,7 +235,6 @@ async function sendPostcard(
       ...(recipient.phone_number && { phoneNumber: recipient.phone_number }),
     },
     size: '6x4',
-    pdf: designUrl,
     description: campaign.campaign_name || 'New Mover Campaign',
     express: false,
     metadata: {
@@ -187,6 +245,59 @@ async function sendPostcard(
       move_effective_date: recipient.move_effective_date,
     },
   }
+
+  // Determine postcard content method (priority: template > HTML > PDF > default)
+  let contentMethod = 'default'
+
+  // Option 1: Use PostGrid template IDs
+  if (campaign.postgrid_template_id) {
+    requestBody.frontTemplate = campaign.postgrid_template_id
+    contentMethod = 'template'
+    console.log(`   📄 Using PostGrid template: ${campaign.postgrid_template_id}`)
+
+    // Back template or generate default back HTML
+    if (campaign.postgrid_back_template_id) {
+      requestBody.backTemplate = campaign.postgrid_back_template_id
+    } else if (campaign.postcard_back_html) {
+      requestBody.backHTML = campaign.postcard_back_html
+    } else {
+      requestBody.backHTML = generateDefaultPostcardHTML(campaign, 'back')
+    }
+  }
+  // Option 2: Use HTML content stored in campaign
+  else if (campaign.postcard_front_html) {
+    requestBody.frontHTML = campaign.postcard_front_html
+    requestBody.backHTML = campaign.postcard_back_html || generateDefaultPostcardHTML(campaign, 'back')
+    contentMethod = 'html'
+    console.log(`   📄 Using HTML content from campaign`)
+  }
+  // Option 3: Try to get template from user_campaign table
+  else if (campaign.company_id) {
+    const { data: userCampaign } = await supabase
+      .from('user_campaign')
+      .select('template_id, master_template_id')
+      .eq('user_id', campaign.user_id)
+      .eq('company_id', campaign.company_id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (userCampaign?.template_id) {
+      requestBody.frontTemplate = userCampaign.template_id
+      requestBody.backHTML = generateDefaultPostcardHTML(campaign, 'back')
+      contentMethod = 'user_campaign_template'
+      console.log(`   📄 Using template from user_campaign: ${userCampaign.template_id}`)
+    }
+  }
+
+  // Option 4: Fallback to default HTML
+  if (contentMethod === 'default') {
+    requestBody.frontHTML = generateDefaultPostcardHTML(campaign, 'front')
+    requestBody.backHTML = generateDefaultPostcardHTML(campaign, 'back')
+    console.log(`   📄 Using default HTML (no template/design found)`)
+  }
+
+  console.log(`   📬 Sending postcard via PostGrid (method: ${contentMethod})`)
 
   const response = await fetch(`${postgridApiUrl}/postcards`, {
     method: 'POST',
@@ -204,7 +315,27 @@ async function sendPostcard(
     )
   }
 
-  return await response.json()
+  const result = await response.json()
+
+  // Log the postcard creation event
+  try {
+    await supabase.from('postcard_events').insert({
+      postgrid_postcard_id: result.id,
+      event_type: 'created',
+      event_data: {
+        status: result.status,
+        sendDate: result.sendDate,
+        live: result.live,
+        contentMethod: contentMethod,
+      },
+      campaign_id: campaign.id,
+      new_mover_id: recipient.id,
+    })
+  } catch (eventError) {
+    console.error('   ⚠️ Failed to log postcard event:', eventError)
+  }
+
+  return result
 }
 
 /**
@@ -418,8 +549,8 @@ async function processCampaign(
           try {
             const postcardResult = await sendPostcard(
               savedMover,
-              campaign.postcard_design_url,
-              campaign
+              campaign,
+              supabase
             )
 
             console.log(`   📮 Postcard sent via PostGrid: ${postcardResult.id}`)
@@ -542,13 +673,19 @@ serve(async (req) => {
     // ============================================================================
     // FETCH ACTIVE CAMPAIGNS WITH POLLING ENABLED
     // ============================================================================
+    // Note: We now support multiple postcard content methods:
+    // 1. PostGrid template_id (postgrid_template_id)
+    // 2. HTML content (postcard_front_html)
+    // 3. PDF URL (postcard_design_url)
+    // 4. Default HTML (fallback)
+    // So we no longer require postcard_design_url to be set
     const { data: campaigns, error: fetchError } = await supabase
       .from('campaigns')
       .select('*')
       .eq('status', 'active')
       .eq('polling_enabled', true)
+      .eq('approval_status', 'approved')
       .not('target_zip_codes', 'is', null)
-      .not('postcard_design_url', 'is', null)
 
     if (fetchError) {
       console.error('Error fetching campaigns:', fetchError)

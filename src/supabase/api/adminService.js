@@ -136,6 +136,20 @@ export const adminCampaignService = {
         .eq('user_id', data.user_id)
         .maybeSingle();
 
+      // Fetch user_campaign data for template info
+      let userCampaignData = null;
+      if (data.user_id && data.company_id) {
+        const { data: ucData } = await supabase
+          .from('user_campaign')
+          .select('*')
+          .eq('user_id', data.user_id)
+          .eq('company_id', data.company_id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        userCampaignData = ucData;
+      }
+
       const campaign = {
         ...data,
         company_name: data.companies?.name || 'Unknown Company',
@@ -144,7 +158,11 @@ export const adminCampaignService = {
         // Use real approval_status from database (Phase 2)
         approval_status: data.approval_status || 'pending',
         // Map total_cost to budget for UI compatibility
-        budget: data.total_cost || 0
+        budget: data.total_cost || 0,
+        // Include user_campaign template info
+        user_campaign: userCampaignData,
+        master_template_id: userCampaignData?.master_template_id || null,
+        template_id: userCampaignData?.template_id || null
       };
 
       return { success: true, campaign };

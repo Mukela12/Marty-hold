@@ -7,6 +7,7 @@ import {
   Users,
   Activity,
   CreditCard,
+  Mail,
   LogOut
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -71,6 +72,11 @@ const AdminLayout = () => {
       path: '/admin/transactions',
       icon: CreditCard,
       label: 'Transactions'
+    },
+    {
+      path: '/admin/postcards',
+      icon: Mail,
+      label: 'Postcards'
     },
     {
       path: '/admin/activity',

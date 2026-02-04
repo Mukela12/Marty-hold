@@ -35,6 +35,7 @@ import AdminUsers from './pages/admin/AdminUsers'
 import AdminUserDetails from './pages/admin/AdminUserDetails'
 import AdminTransactions from './pages/admin/AdminTransactions'
 import AdminActivity from './pages/admin/AdminActivity'
+import AdminPostcards from './pages/admin/AdminPostcards'
 import AdminProtectedRoute from './components/admin/AdminProtectedRoute'
 import './App.css'
 
@@ -64,6 +65,7 @@ function App() {
           <Route path="users/:userId" element={<AdminUserDetails />} />
           <Route path="transactions" element={<AdminTransactions />} />
           <Route path="activity" element={<AdminActivity />} />
+          <Route path="postcards" element={<AdminPostcards />} />
           <Route index element={<Navigate to="/admin/dashboard" replace />} />
         </Route>
 

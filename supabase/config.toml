@@ -179,3 +179,13 @@ entrypoint = "./functions/postcard-html-generator/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/postcard-html-generator/*.html" ]
+
+[functions.postgrid-webhook]
+enabled = true
+verify_jwt = false  # PostGrid webhooks cannot send JWT tokens
+entrypoint = "./functions/postgrid-webhook/index.ts"
+
+[functions.poll-melissa-new-movers]
+enabled = true
+verify_jwt = false  # Called by cron/scheduler
+entrypoint = "./functions/poll-melissa-new-movers/index.ts"

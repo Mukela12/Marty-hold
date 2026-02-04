@@ -39,21 +39,12 @@ const Sidebar = () => {
     <div className="sidebar">
       {/* Logo Section */}
       <div className="sidebar-header">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-linear-to-br from-primary-400 to-primary-600 rounded-xl flex items-center justify-center shadow-lg">
-            <span className="text-white font-bold text-sm">MP</span>
-          </div>
-          <div>
-            <h1 className="text-lg font-bold text-gray-900">MovePost</h1>
-            <p className="text-xs text-gray-500 font-medium">Postcard Platform</p>
-          </div>
-        </div>
-        {/* <img
+        <img
           src="/movepost-logo.png"
           alt="MovePost"
           className="sidebar-logo"
         />
-        <NotificationBell /> */}
+        <NotificationBell />
       </div>
 
       {/* Navigation Menu */}
