@@ -19,12 +19,12 @@ const campaignService = {
         throw new Error('User not authenticated');
       }
 
-      // Get company ID for the user
+      // Get company ID for the user (may not exist yet)
       const { data: company } = await supabase
         .from('companies')
         .select('id')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
       // Prepare campaign record
       const campaignRecord = {

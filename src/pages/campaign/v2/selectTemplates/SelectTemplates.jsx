@@ -145,14 +145,19 @@ const SelectTemplates = () => {
 
 
     const initializeTemplates = async () => {
-      if (!brand?.masterCategory || !apiResponse?.brand) throw new Error("No brand data available");
+      if (!brand?.masterCategory || !apiResponse?.brand) {
+        console.warn("Brand data not available — redirecting to step 1");
+        toast.error("Please complete company details first");
+        navigate('/campaign/step1');
+        return;
+      }
 
       try {
           setLoading(true);
 
           // Step 1: Get sample URLs (Existing logic) for category
           const getSampleTemplate = await getSampleUrl(brand.masterCategory);
-          if( !getSampleTemplate?.image_urls || !getSampleTemplate?.image_urls.length > 0){
+          if( !getSampleTemplate?.image_urls || getSampleTemplate.image_urls.length === 0){
             throw new Error("No Sample image urls available for the category");
           }
           // Step 2: Use the context to get the postcards by AI

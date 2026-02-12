@@ -1,5 +1,6 @@
 // contexts/BrandDevContext.js
 import React, { createContext, useContext, useState, useCallback } from "react";
+import toast from "react-hot-toast";
 import { getCompanyDomainFromUrl, masterCategories } from "../pages/campaign/v2/GetCompanyDetails/GetCompanyUtils";
 import { supabase } from "../supabase/integration/client";
 
@@ -67,7 +68,7 @@ const getBrandFetchApiDetails = async(url)=>{
       body: { companyUrl:url },
     })
     if (error) {
-      throw new Error("Supabase Error:", error);
+      throw new Error(`Supabase Error: ${error.message || error}`);
     }
     const{data} =brandDevResponse;
     console.log(data, ">>>>>>>>>>>>>>>>>>>>>>>>>");
@@ -110,7 +111,7 @@ const insertCompanyDetails = async(apiResponse, url, userId)=>{
       .single();
 
     if (error) {
-      throw new Error("Insert failed:", error);
+      throw new Error(`Insert failed: ${error.message || error}`);
     }
   } catch (error) {
     throw error;
@@ -157,14 +158,42 @@ async function getMasterCategoryDetails(){
 }
 
 
+// Helpers to persist brand data across page refreshes
+const BRAND_CACHE_KEY = 'cached_brand_data';
+
+function loadCachedBrandData() {
+  try {
+    const raw = localStorage.getItem(BRAND_CACHE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    localStorage.removeItem(BRAND_CACHE_KEY);
+    return null;
+  }
+}
+
+function saveBrandDataToCache(apiResp, mapped, domain, aiCategory) {
+  try {
+    localStorage.setItem(BRAND_CACHE_KEY, JSON.stringify({
+      apiResponse: apiResp,
+      mappedData: mapped,
+      companyDomain: domain,
+      aiCategorySuggestion: aiCategory
+    }));
+  } catch {
+    // localStorage full or unavailable — non-fatal
+  }
+}
+
 export const BrandDevProvider = ({ children }) => {
-  const [apiResponse, setApiResponse] = useState(null);
-  const [mappedData, setMappedData] = useState(null);
+  const cached = loadCachedBrandData();
+  const [apiResponse, setApiResponse] = useState(cached?.apiResponse ?? null);
+  const [mappedData, setMappedData] = useState(cached?.mappedData ?? null);
   const [loading, setLoading] = useState(false);
-  const [fetchSuccess, setFetchSuccess] = useState(false);
+  const [fetchSuccess, setFetchSuccess] = useState(cached ? true : false);
   const [isEditing, setIsEditing] = useState(false);
-  const [companyDomain, setCompanyDomain]=useState(null);
-  const [aiCategorySuggestion, setCategoryAiSuggestion] = useState(null);
+  const [companyDomain, setCompanyDomain]=useState(cached?.companyDomain ?? null);
+  const [aiCategorySuggestion, setCategoryAiSuggestion] = useState(cached?.aiCategorySuggestion ?? null);
 
   const fetchBrandData = useCallback(async (website) => {
     try {
@@ -199,6 +228,9 @@ export const BrandDevProvider = ({ children }) => {
         setMappedData(mapped);
         setFetchSuccess(true);
         setIsEditing(false);
+
+        // Persist to localStorage so data survives page refresh
+        saveBrandDataToCache(response, mapped, website, aiSuggestedCategory);
 
         return {
           apiResponse: response,
@@ -236,6 +268,7 @@ export const BrandDevProvider = ({ children }) => {
     setIsEditing(false);
     setCompanyDomain(null);
     setLoading(false);
+    localStorage.removeItem(BRAND_CACHE_KEY);
   }, []);
 
   const value = {

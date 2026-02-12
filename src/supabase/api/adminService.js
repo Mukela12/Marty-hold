@@ -138,15 +138,20 @@ export const adminCampaignService = {
 
       // Fetch user_campaign data for template info
       let userCampaignData = null;
-      if (data.user_id && data.company_id) {
-        const { data: ucData } = await supabase
+      if (data.user_id) {
+        let ucQuery = supabase
           .from('user_campaign')
           .select('*')
           .eq('user_id', data.user_id)
-          .eq('company_id', data.company_id)
           .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
+          .limit(1);
+
+        // Filter by company_id if available
+        if (data.company_id) {
+          ucQuery = ucQuery.eq('company_id', data.company_id);
+        }
+
+        const { data: ucData } = await ucQuery.maybeSingle();
         userCampaignData = ucData;
       }
 
@@ -162,7 +167,8 @@ export const adminCampaignService = {
         // Include user_campaign template info
         user_campaign: userCampaignData,
         master_template_id: userCampaignData?.master_template_id || null,
-        template_id: userCampaignData?.template_id || null
+        // Prefer user_campaign template_id, fallback to campaigns table template_id
+        template_id: userCampaignData?.template_id || data.template_id || null
       };
 
       return { success: true, campaign };

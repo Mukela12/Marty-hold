@@ -3,8 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import ProcessLayout from '../../../../components/process/ProcessLayout';
 import { Layout, Wand2, Check } from "lucide-react";
-import FabricEditor from '../../../../components/PostcardEditor/FabricEditor';
-import CustomizeDesign from '../CustomizeDesign/CustomizeDesign';
 
 const EditTemplate = () => {
   const navigate = useNavigate();
@@ -207,7 +205,10 @@ const EditTemplate = () => {
       isSaving={isSaving}
       templateName={selectedTemplate?.name}
     >
-      <CustomizeDesign />
+      {/* TODO: Postcard editor integration point — other team will implement */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#888' }}>
+        <p>Postcard editor will be integrated here</p>
+      </div>
     </ProcessLayout>
   );
 };

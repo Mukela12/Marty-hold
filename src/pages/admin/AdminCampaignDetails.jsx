@@ -549,9 +549,9 @@ const AdminCampaignDetails = () => {
               previewUrl={campaign.postcard_preview_url}
               frontHtml={campaign.postcard_front_html}
               backHtml={campaign.postcard_back_html}
-              templateId={campaign.postgrid_template_id || campaign.master_template_id}
-              backTemplateId={campaign.template_id}
-              templateName={campaign.template_name || (campaign.master_template_id ? 'PostGrid Template' : null)}
+              templateId={campaign.postgrid_template_id || campaign.template_id}
+              backTemplateId={campaign.postgrid_back_template_id}
+              templateName={campaign.template_name || (campaign.template_id ? 'PostGrid Template' : null)}
               companyLogo={campaign.companies?.logo_url}
               companyName={campaign.companies?.name}
               primaryColor={campaign.companies?.primary_color}

@@ -361,8 +361,7 @@ export const adminPostcardService = {
         return { success: false, error: 'Template ID is required' };
       }
 
-      // Get PostGrid API key from environment or use test key
-      const apiKey = import.meta.env.VITE_POSTGRID_API_KEY || 'test_sk_atqJdHXcCuPdBENzNnDUTh';
+      const apiKey = import.meta.env.VITE_POSTGRID_API_KEY;
 
       const response = await fetch(
         `https://api.postgrid.com/print-mail/v1/templates/${templateId}`,

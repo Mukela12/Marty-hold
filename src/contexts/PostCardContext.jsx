@@ -13,7 +13,8 @@ export const PostcardProvider = ({ children }) => {
       try {
         setPostcards(JSON.parse(savedData));
       } catch (e) {
-        throw new Error("Failed to parse cached postcards", e);
+        console.error("Failed to parse cached postcards", e);
+        localStorage.removeItem('cached_postcards');
       }
     }
   }, []);
@@ -22,9 +23,13 @@ export const PostcardProvider = ({ children }) => {
     const localData = localStorage.getItem('cached_postcards');
     if (postcards.length > 0) return postcards;
     if (localData) {
-      const parsed = JSON.parse(localData);
-      setPostcards(parsed);
-      return parsed;
+      try {
+        const parsed = JSON.parse(localData);
+        setPostcards(parsed);
+        return parsed;
+      } catch {
+        localStorage.removeItem('cached_postcards');
+      }
     }
 
     setIsContextLoading(true);
